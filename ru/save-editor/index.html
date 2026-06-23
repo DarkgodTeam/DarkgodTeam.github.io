@@ -49,7 +49,7 @@
     input[type=number]{ -moz-appearance:textfield; }
 
     
-    .site-nav { width:100%; background:var(--nav-blue); position:relative; z-index:60; font-family:'8-bit Operator Plus Bold',monospace; font-size: 18px }
+    .site-nav { width:100%; background:var(--surface-2); border-bottom:1px solid var(--border); position:relative; z-index:60; font-family:'8-bit Operator Plus Bold',monospace; font-size: 18px }
     .site-nav > div { width:100%; position:relative; }
     .site-nav ul:first-child { display:flex; align-items:center; justify-content:center; gap:12px; height:48px; width:min(100%,672px); margin:0 auto; padding:0 96px 0 8px; list-style:none; }
     .site-nav ul:first-child li { flex:0 0 auto; }
@@ -430,13 +430,25 @@
 </head>
 <body>
 
+<nav class="site-nav">
+  <div>
+    <ul>
+      <li><a href="../index.html">ГЛАВНАЯ</a></li>
+      <li><a href="https://tobyfox.bandcamp.com/" target="_blank" rel="noopener noreferrer">САУНДТРЕК</a></li>
+      <li><a href="https://www.fangamer.com/collections/deltarune" target="_blank" rel="noopener noreferrer">МЕРЧ</a></li>
+      <li><a href="index.html">СОХРАНЕНИЯ</a></li>
+      <li><a href="../team/index.html">КОМАНДА</a></li>
+    </ul>
+  </div>
+</nav>
+
 <header class="ed-header">
   <button class="ed-mobile-toggle" id="sidebarToggle" type="button" aria-label="Меню"><span></span><span></span><span></span></button>
   <div class="ed-logo">
     <span class="badge" id="eggHeart" title="?"><img src="game-sprites/spr_heart_0.png" alt=""></span>
     <div>
       РЕДАКТОР СОХРАНЕНИЙ<br>
-      <span>DELTARUNE · Dess1225</span>
+      <span>DELTARUNE · DarkgoD Team</span>
     </div>
   </div>
   <div class="ed-header-spacer"></div>

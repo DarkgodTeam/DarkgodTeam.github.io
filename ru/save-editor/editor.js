@@ -1336,7 +1336,7 @@
         <p class="helper" style="margin-top:8px;">Код редактора распространяется по лицензии <b>MIT</b>. Проект некоммерческий: он создан фанатами для фанатов и <b>не предназначен для продажи или извлечения прибыли</b>.</p>
         <pre class="license-box" style="white-space:pre-wrap;background:var(--surface-3);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:16px;line-height:1.55;margin:12px 0;">MIT License
 
-Copyright (c) 2026 Dess1225
+Copyright (c) 2026 DarkgoD Team
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
