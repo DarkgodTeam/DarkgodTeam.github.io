@@ -1,10 +1,10 @@
-// Dog piano animation — plays when audio is playing, notes float up
+
 (function(){
   var noteStyle = document.createElement('style');
   noteStyle.textContent = '@keyframes float-note{0%{offset-distance:0%;opacity:1}100%{offset-distance:100%;opacity:0}}.dog-note{position:absolute;width:18px;height:18px;image-rendering:pixelated;animation:float-note .8s cubic-bezier(.8,0,1,1.2) forwards;pointer-events:none}';
   document.head.appendChild(noteStyle);
 
-  // Resolve note image path relative to page
+
   var scripts = document.querySelectorAll('script[src*="dog-piano"]');
   var basePath = '';
   if(scripts.length) {
@@ -16,7 +16,7 @@
     var wrapper = player.querySelector('div[style*="inline-block"]') || player;
     wrapper.style.position = 'relative';
 
-    // Find audio after dog-player (may be separated by <p> etc)
+
     var audio = null;
     var searchFrom = player.parentElement && player.parentElement.tagName !== 'MAIN' && player.parentElement.tagName !== 'ARTICLE' ? player.parentElement : player;
     var sibling = searchFrom.nextElementSibling;

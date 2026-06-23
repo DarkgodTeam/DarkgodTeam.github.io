@@ -1,5 +1,5 @@
 (function() {
-  // === Lightbox с галереей, стрелками и миниатюрами ===
+
   var s = document.createElement('style');
   s.textContent = [
     '.lb-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:999999;overflow:hidden;opacity:0;transition:opacity .3s ease}',
@@ -22,7 +22,7 @@
   ].join('');
   document.head.appendChild(s);
 
-  // Создаём элементы
+
   var ov = document.createElement('div');
   ov.className = 'lb-ov';
   ov.innerHTML = '<span class="lb-x">&times;</span>'
@@ -41,19 +41,19 @@
 
   function collectImages(clickedSrc) {
     images = [];
-    // Находим кликнутую картинку в DOM
+
     var clickedEl = null;
     document.querySelectorAll('img').forEach(function(i) {
       if (i.src === clickedSrc && !clickedEl) clickedEl = i;
     });
     if (!clickedEl) { images = [clickedSrc]; return; }
 
-    // Если картинка в .img-row — собираем только картинки из этого row
+
     var row = clickedEl.closest('.img-row');
     if (row) {
       row.querySelectorAll('img').forEach(function(i) { images.push(i.src); });
     } else {
-      // Одиночная картинка — только она
+
       images = [clickedSrc];
     }
   }
@@ -100,11 +100,11 @@
       img.style.opacity = '1';
     }, 150);
     updateCounter();
-    // Update thumb highlight
+
     thumbsContainer.querySelectorAll('img').forEach(function(t, i) {
       t.className = i === currentIndex ? 'active' : '';
     });
-    // Scroll active thumb into view
+
     var active = thumbsContainer.querySelector('.active');
     if (active) active.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
   }
@@ -117,7 +117,7 @@
     resetZoom();
     buildThumbs();
     updateCounter();
-    // Скрыть стрелки/миниатюры/счётчик если одна картинка
+
     var single = images.length <= 1;
     ov.querySelector('.lb-left').style.display = single ? 'none' : '';
     ov.querySelector('.lb-right').style.display = single ? 'none' : '';
@@ -136,33 +136,33 @@
     }, 300);
   }
 
-  // Events
+
   ov.querySelector('.lb-x').onclick = close;
   ov.querySelector('.lb-left').onclick = function(e) { e.stopPropagation(); goTo(currentIndex - 1); };
   ov.querySelector('.lb-right').onclick = function(e) { e.stopPropagation(); goTo(currentIndex + 1); };
 
-  // Click overlay background = close
+
   ov.addEventListener('click', function(e) {
     if (e.target === ov || e.target.classList.contains('lb-img-wrap')) close();
   });
 
-  // Click image = zoom to 1:1 or reset
+
   img.addEventListener('click', function(e) {
     e.stopPropagation();
     if (zoomed) {
-      // Уже приближено — вернуть
+
       resetZoom();
     } else {
-      // Проверяем: если картинка уже показана в полном размере (1:1), не зумить
+
       var rect = img.getBoundingClientRect();
       if (rect.width >= img.naturalWidth * 0.95) {
-        // Картинка и так в натуральном размере — зум не нужен
+
         return;
       }
-      // Зумим до 1:1 (натуральный размер)
+
       zoomed = true;
       scale = img.naturalWidth / rect.width;
-      // Сдвигаем к точке клика
+
       var cx = rect.left + rect.width / 2;
       var cy = rect.top + rect.height / 2;
       tx = (cx - e.clientX) * (scale - 1);
@@ -171,7 +171,7 @@
     }
   });
 
-  // Pan when zoomed (mouse drag)
+
   var panning = false, panStartX, panStartY, panTxStart, panTyStart;
   img.addEventListener('mousedown', function(e) {
     if (!zoomed) return;
@@ -191,7 +191,7 @@
     if (panning) { panning = false; img.style.cursor = zoomed ? 'zoom-out' : 'zoom-in'; }
   });
 
-  // Keyboard
+
   document.addEventListener('keydown', function(e) {
     if (!ov.classList.contains('open')) return;
     if (e.key === 'Escape') close();
@@ -199,7 +199,7 @@
     else if (e.key === 'ArrowRight') goTo(currentIndex + 1);
   });
 
-  // Click any page image to open
+
   document.addEventListener('click', function(e) {
     if (ov.classList.contains('open')) return;
     var t = e.target;
@@ -208,19 +208,19 @@
     if (t.closest('#ed-text-panel') || t.closest('#ed-media-panel') || t.closest('#ed-inspector')) return;
     if (t.closest('.dog-player')) return;
     if (t.naturalWidth < 50) return;
-    // Если картинка внутри ссылки — проверяем куда ведёт
+
     var link = t.closest('a');
     if (link) {
       var href = link.getAttribute('href') || '';
-      // Если ссылка на HTML/страницу — не перехватываем, пусть работает как ссылка
+
       if (href.match(/\.html?(\?.*)?$/i) || href.startsWith('/') && !href.match(/\.(png|jpg|jpeg|gif|webp)(\?.*)?$/i)) return;
-      // Если ссылка на картинку — открываем картинку по ссылке в лайтбоксе
+
       if (href.match(/\.(png|jpg|jpeg|gif|webp)(\?.*)?$/i)) {
         e.preventDefault();
         open(link.href);
         return;
       }
-      // Прочие ссылки — не трогаем
+
       return;
     }
     e.preventDefault();

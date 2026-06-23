@@ -172,7 +172,7 @@ nav > .flags li a:hover, nav > .flags li img:hover { opacity: 0.9; }
 
 @media screen and (max-width: 991px) { #download .pc-button { margin-bottom: 15px; } }
 
-/* .pc-button:hover { @include button-gradient(#5e5e5e, #959595); .button-contents { @include button-gradient(#959595, #5e5e5e); } } .pc-button, .pc-button:active > .button-contents { @include button-gradient(#3e3e3e, #747474); } .pc-button > .button-contents { @include button-gradient(#747474, #3e3e3e); .button-icon { padding: 3px 5px; } } .switch-button:hover { @include button-gradient(#CC0718, #EC0718); .button-contents { @include button-gradient(#EC0718, #CC0718); } } .switch-button, .switch-button:active > .button-contents { @include button-gradient(#AC0718, #e60003); } .switch-button > .button-contents { @include button-gradient(#e60003, #AC0718); .button-icon { padding: 4px 10px; } } .playstation-button:hover { @include button-gradient(#01377b, #2a7dbc); .button-contents { @include button-gradient(#2a7dbc, #01377b); } } .playstation-button, .playstation-button:active > .button-contents { @include button-gradient(#0b4489, #055ec2); } .playstation-button > .button-contents { @include button-gradient(#055ec2, #0b4489); .button-icon { padding: 0 5px; } } */
+
 .modal .modal-content { background: #1d1963; border: 2px solid #342db5; }
 
 .modal .modal-content .modal-header { border: none; }
@@ -388,7 +388,12 @@ footer a:hover { color: #ccc; }
 
 footer .privacy a { color: #878787; font-size: 10px !important; text-decoration: none; }
 
-/* === Mobile fixes === */
+
+#regions { position: absolute !important; top: 12px; right: 12px; z-index: 1000; display: flex; gap: 8px; list-style: none; }
+#regions li { display: block; }
+#regions img { display: block !important; width: 36px !important; height: 24px !important; object-fit: cover !important; }
+
+
 .site-nav ul:first-child { justify-content: flex-start !important; }
 @media screen and (max-width: 720px) {
   .site-nav ul:first-child { justify-content: flex-start !important; gap: 0px !important; padding-left: 2px !important; padding-right: 48px !important; }

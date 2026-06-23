@@ -3,7 +3,7 @@
 
   document.addEventListener('DOMContentLoaded', function() {
 
-    // Convert <a href="...mp4"> with <img> inside into inline <video>
+
     document.querySelectorAll('a[href$=".mp4"]').forEach(function(link) {
       var img = link.querySelector('img');
       if (!img) return;
@@ -30,7 +30,7 @@
       link.parentNode.replaceChild(video, link);
     });
 
-    // Convert <a href="...mp3"> with <img> inside into clickable image + hidden audio player
+
     document.querySelectorAll('a[href$=".mp3"]').forEach(function(link) {
       var src = link.getAttribute('href');
       var img = link.querySelector('img');
