@@ -1362,6 +1362,7 @@ SOFTWARE.</pre>
           <li>Ассеты, текст и код игры: <a href="https://deltarune.com/" target="_blank" rel="noopener" style="color:var(--blue)">Toby Fox — DELTARUNE</a></li>
           <li>Дампы игры: <a href="https://github.com/UnderminersTeam/UndertaleModTool" target="_blank" rel="noopener" style="color:var(--blue)">UNDERTALE MOD TOOL</a></li>
           <li>Русский перевод: <a href="https://t.me/darkgodteam" target="_blank" rel="noopener" style="color:var(--blue)">DarkgoD Team</a></li>
+          <li>Вдохновение: <a href="https://saveeditor.spamton.com/" target="_blank" rel="noopener" style="color:var(--blue)">saveeditor.spamton.com</a>, <a href="https://tennaproject.com/" target="_blank" rel="noopener" style="color:var(--blue)">tennaproject.com</a></li>
         </ul></article>`;
     } else {
       body = `<article class="card accent-red"><h2>О редакторе</h2>
