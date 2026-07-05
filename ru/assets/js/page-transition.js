@@ -40,8 +40,20 @@
     void de.offsetWidth;
     de.classList.remove('pt-loaded');
   }
-  if (document.readyState === 'complete') setTimeout(hide, 1000);
-  else window.addEventListener('load', function () { setTimeout(hide, 1000); });
+  if (document.readyState === 'complete') scheduleHide();
+  else window.addEventListener('load', function () { scheduleHide(); });
+
+  function scheduleHide() {
+    var p = window.__ptPreload;
+    if (p && p.then) {
+      var done = false;
+      var go = function () { if (!done) { done = true; hide(); } };
+      p.then(go);
+      setTimeout(go, 6000);
+    } else {
+      setTimeout(hide, 1000);
+    }
+  }
 
   document.addEventListener('click', function (e) {
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;

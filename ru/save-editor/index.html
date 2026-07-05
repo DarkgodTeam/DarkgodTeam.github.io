@@ -409,11 +409,11 @@
     
     .dlg { position:relative; display:flex; gap:16px; background:transparent; border:none; border-radius:0; padding:30px 34px; align-items:center; }
     
-    .dlg.gamebox::before { content:''; position:absolute; inset:8px; background:#000; border:2px solid #fff; box-sizing:border-box; z-index:0; }
+    .dlg.gamebox::before { content:''; position:absolute; inset:0; background:#000; border:2px solid #fff; box-sizing:border-box; z-index:0; }
     .dlg.gamebox .dlg-face, .dlg.gamebox .dlg-body { position:relative; z-index:1; }
     .dlg.gamebox .tbx-edge { display:none; }
     
-    .dlg.gamebox .tbx { position:absolute; width:32px; height:32px; image-rendering:pixelated; z-index:2; background:url(game-sprites/spr_textbox_topleft_0.png) no-repeat; background-size:32px 32px; animation:tbxspark 2.64s step-end infinite; }
+    .dlg.gamebox .tbx { position:absolute; width:28px; height:28px; image-rendering:pixelated; z-index:2; background:url(game-sprites/spr_textbox_topleft_0.png) no-repeat; background-size:28px 28px; animation:tbxspark 2.64s step-end infinite; }
     @keyframes tbxspark {
       0%    { background-image:url(game-sprites/spr_textbox_topleft_0.png); }
       12.5% { background-image:url(game-sprites/spr_textbox_topleft_1.png); }
@@ -424,15 +424,10 @@
       75%   { background-image:url(game-sprites/spr_textbox_topleft_6.png); }
       87.5% { background-image:url(game-sprites/spr_textbox_topleft_7.png); }
     }
-    .dlg.gamebox .tbx-tl { top:0; left:0; }
-    .dlg.gamebox .tbx-tr { top:0; right:0; transform:scaleX(-1); }
-    .dlg.gamebox .tbx-bl { bottom:0; left:0; transform:scaleY(-1); }
-    .dlg.gamebox .tbx-br { bottom:0; right:0; transform:scale(-1,-1); }
-    .dlg.gamebox .tbx-edge { position:absolute; image-rendering:pixelated; z-index:2; }
-    .dlg.gamebox .tbx-top { top:0; left:32px; right:32px; height:24px; background:url(game-sprites/spr_textbox_top_0.png) repeat-x; background-size:2px 24px; }
-    .dlg.gamebox .tbx-bottom { bottom:0; left:32px; right:32px; height:24px; background:url(game-sprites/spr_textbox_top_0.png) repeat-x; background-size:2px 24px; transform:scaleY(-1); }
-    .dlg.gamebox .tbx-left { left:0; top:32px; bottom:32px; width:24px; background:url(game-sprites/spr_textbox_left_0.png) repeat-y; background-size:24px 2px; }
-    .dlg.gamebox .tbx-right { right:0; top:32px; bottom:32px; width:24px; background:url(game-sprites/spr_textbox_left_0.png) repeat-y; background-size:24px 2px; transform:scaleX(-1); }
+    .dlg.gamebox .tbx-tl { top:-6px; left:-6px; }
+    .dlg.gamebox .tbx-tr { top:-6px; right:-6px; transform:scaleX(-1); }
+    .dlg.gamebox .tbx-bl { bottom:-6px; left:-6px; transform:scaleY(-1); }
+    .dlg.gamebox .tbx-br { bottom:-6px; right:-6px; transform:scale(-1,-1); }
     
     .dlg-cond-head { display:flex; align-items:center; gap:7px; margin:14px 0 5px; font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--yellow); }
     .dlg-cond-head:first-child { margin-top:0; }
@@ -554,10 +549,8 @@
       .ed-mobile-toggle { width:38px; height:38px; }
       
       .dlg { gap:10px; padding:24px 22px; }
-      .dlg.gamebox::before { inset:6px; }
-      .dlg.gamebox .tbx { width:26px; height:26px; background-size:26px 26px; }
-      .dlg.gamebox .tbx-top, .dlg.gamebox .tbx-bottom { left:26px; right:26px; height:20px; background-size:2px 20px; }
-      .dlg.gamebox .tbx-left, .dlg.gamebox .tbx-right { top:26px; bottom:26px; width:20px; background-size:20px 2px; }
+      .dlg.gamebox::before { inset:0; }
+      .dlg.gamebox .tbx { width:24px; height:24px; background-size:24px 24px; }
       .dlg-face img { height:72px; }
       .dlg-line { font-size:15px; }
       .color-grid { max-width:100%; }
@@ -622,7 +615,7 @@
     .dog-banner b { color:#ff9c9c; }
     .dog-banner code { background:#3a1414; color:#ffbcbc; padding:1px 5px; border-radius:4px; }
 </style>
-<script>(function(d){var de=d.documentElement;de.classList.add('pt-anim');function h(){de.classList.add('pt-loaded');}if(d.readyState==='complete')setTimeout(h,1000);else addEventListener('load',function(){setTimeout(h,1000);});setTimeout(h,6000);})(document);</script>
+<script>(function(d){var de=d.documentElement;de.classList.add('pt-anim');function reveal(){de.classList.add('pt-loaded');}function h(){var p=window.__ptPreload;if(p&&p.then){p.then(reveal);}else{reveal();}}if(d.readyState==='complete')setTimeout(h,1000);else addEventListener('load',function(){setTimeout(h,1000);});setTimeout(reveal,6000);})(document);</script>
 <style id="pt-style">html.pt-anim::before{content:"";position:fixed;inset:0;z-index:2147483600;background:#0c0a14;opacity:1;transition:opacity .45s ease;}html.pt-anim.pt-loaded::before{opacity:0;pointer-events:none;}#pt-gif{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483601;width:135px;height:135px;object-fit:contain;image-rendering:pixelated;pointer-events:none;opacity:1;transition:opacity .45s ease;}html.pt-anim.pt-loaded #pt-gif{opacity:0;}html.pt-anim.pt-gone::before,html.pt-anim.pt-gone #pt-gif{display:none;}@media (prefers-reduced-motion:reduce){html.pt-anim::before,#pt-gif{transition:opacity .12s linear;}}</style>
 <script src="../assets/js/page-loader-gifs.js" defer></script>
 <script src="../assets/js/page-transition.js" defer></script>
@@ -696,6 +689,7 @@
 <script src="knight-flaginfo.js"></script>
 <script src="knight-recruits.js"></script>
 <script src="knight-gear.js"></script>
+<script src="knight-preload.js"></script>
 <script src="equip-menu.js"></script>
 <script src="light-menu.js"></script>
 <script src="proph-fx.js"></script>
