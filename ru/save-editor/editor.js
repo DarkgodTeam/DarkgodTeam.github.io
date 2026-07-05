@@ -17,7 +17,7 @@
   };
   const GROUP_DEFAULT = { inventory: 'consumables', party: 'overview', story: 'ch1', flags: 'known', about: 'overview' };
   const INVENTORY_TABS = [['consumables','Расходуемые'],['keyItems','Важные'],['weapons','Оружие'],['armors','Броня'],['storage','Хранилище']];
-  const PARTY_TABS = [['overview','Обзор'],['kris','Крис'],['susie','Сьюзи'],['ralsei','Ральзей'],['noelle','Ноэль']];
+  const PARTY_TABS = [['overview','Обзор']];
   const FLAG_TABS = [['known','По категориям'],['all','Все индексы']];
   const PARTY_ACCENT = { kris:'accent-kris', susie:'accent-susie', ralsei:'accent-ralsei', noelle:'accent-noelle' };
 
@@ -41,13 +41,14 @@
   let _slotSeq = 0;
   let state = load() || migrateFromV2() || {
     route: 'welcome', subroute: 'overview', selectedId: null, dirty: false,
-    search: '', flagPage: 1, flagPerPage: 50, flagCategory: 'all',
+    search: '', flagPage: 1, flagPerPage: 50, flagCategory: 'all', flagHideRecruits: false, flagHideCategorized: false,
     saves: [],
   };
   _slotSeq = (state.saves || []).reduce((m, s) => { const x = /^f(\d+)$/.exec(s && s.id); return x ? Math.max(m, +x[1]) : m; }, 0);
   state.saves = state.saves.map(normalizeSlot);
   let searchDebounce = null;
   let invSyncDebounce = null;
+  let conflictWarnDebounce = null;
 
   state.saves = state.saves.filter(s => !(s.source && s.source.kind === 'demo'));
   if (!state.saves.find(s => s.id === state.selectedId)) state.selectedId = state.saves[0]?.id || null;
@@ -64,7 +65,7 @@
     h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507); h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909);
     return 4294967296 * (2097151 & h2) + (h1 >>> 0);
   }
-  function saveHash(save) { try { return hashStr(Core.serializeSave(save) + '|slot' + (save.meta?.slot ?? 0) + '|cs' + (save.meta?.isCompletionSave ? 1 : 0)); } catch { return undefined; } }
+  function saveHash(save) { try { return hashStr(Core.serializeSave(save) + '|slot' + (save.meta?.slot ?? 0) + '|cs' + (save.meta?.isCompletionSave ? 1 : 0) + '|sb' + (save.meta?.sideB ? 1 : 0)); } catch { return undefined; } }
   function recomputeDirty() {
     state.dirty = state.saves.some(s => s.baselineHash !== undefined && saveHash(s.save) !== s.baselineHash);
   }
@@ -82,6 +83,16 @@
     }
   }
   function current() { return state.saves.find(s => s.id === state.selectedId) || state.saves[0]; }
+
+  let __chapterBgApplied = -1;
+  function applyChapterBackground(ch) {
+    const n = Number(ch) || 0;
+    if (__chapterBgApplied === n) return;
+    __chapterBgApplied = n;
+    const cl = document.body.classList;
+    for (let i = 1; i <= 5; i++) cl.remove('ch' + i);
+    if (n >= 1 && n <= 5) cl.add('ch' + n);
+  }
   function fmtDate(ts) { return new Intl.DateTimeFormat('ru-RU',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}).format(new Date(ts)); }
   function fmtTime(frames) {
     const s = Math.max(0, Math.floor(Number(frames||0)/30));
@@ -93,13 +104,13 @@
     const slotNo = m.isCompletionSave ? Number(m.slot) + 3 : Number(m.slot);
     const player = (save.playerName || '').trim() || '?';
     const vessel = (save.vesselName || '').trim() || '?';
-    return `filech${m.chapter}_${slotNo}_${Number(save.time) || 0}_${player}_${vessel}`;
+    return `filech${m.chapter}_${slotNo}${m.sideB ? '_b' : ''}_${Number(save.time) || 0}_${player}_${vessel}`;
   }
   function fileLabelShort(save) {
     const m = save.meta || {};
     const slotNo = m.isCompletionSave ? Number(m.slot) + 3 : Number(m.slot);
     const player = (save.playerName || '').trim() || '?';
-    return `filech${m.chapter}_${slotNo}_${player}`;
+    return `filech${m.chapter}_${slotNo}${m.sideB ? '_b' : ''}_${player}`;
   }
   function toNumber(v) { return Number.isFinite(Number(v)) ? Number(v) : 0; }
 
@@ -118,6 +129,7 @@
       source: { kind: slot.source?.kind||'demo', fileName: slot.source?.fileName||'demo-save', size: slot.source?.size||0 },
       notes: slot.notes || '', save,
       baselineHash: slot.baselineHash !== undefined ? slot.baselineHash : saveHash(save),
+      origFlags: slot.origFlags !== undefined ? slot.origFlags : (Array.isArray(save.flags) ? save.flags.slice() : Object.assign({}, save.flags)),
     };
   }
 
@@ -219,10 +231,76 @@
     const a = window.KnightFlagsAuto && window.KnightFlagsAuto[i];
     return (a && a.n) || `FLAG_${i}`;
   }
-  function flagDoc(i) { return I18n.FLAG_DOCS ? I18n.FLAG_DOCS[i] : null; }
+  const bit = (n, label, width) => ({ bit: n, label, ...(width ? { width } : {}) });
+  const bitList = (items, label) => items.map(n => bit(n, `${label} ${n}`));
+  const FLAG_BIT_DOCS = {
+    1300: [bit(1, 'Плат-шорткат пройден'), bit(5, 'Собрана Розовая монета №1 — Сад: aquaplatforming'), bit(6, 'Собрана Розовая монета №2 — Сад: aquaplatforming'), bit(7, 'Собрана Розовая монета №3 — Сад: aquaplatforming'), bit(8, 'Собрана Розовая монета №4 — Сад: aquaplatforming')],
+    1303: [bit(0, 'Финальный платформинг: платформа превращена'), bit(2, 'Собрана Розовая монета — Сад: finalplatforming_right')],
+    1310: [bit(0, 'Жёлтый бой: состояние отрисовки'), bit(1, 'Узел верёвки — Замок Flowery: bounce_3'), bit(2, 'Узел верёвки — Замок Flowery: shinobeetle_3d'), bit(3, 'Головоломка — Замок Flowery: right_puzzle'), bit(4, 'Собрана Розовая монета — Обрыв: precipice'), bit(6, 'Собрана Розовая монета №1 — Замок Flowery: obscured_bullets'), bit(7, 'Собрана Розовая монета №2 — Замок Flowery: obscured_bullets'), bit(8, 'Собрана Розовая монета №3 — Замок Flowery: obscured_bullets'), bit(10, 'Разбит фонарь с монетами (lantern) №1 — Замок Flowery: orange_puppet_introduction'), bit(11, 'Разбит фонарь с монетами (lantern) №2 — Замок Flowery: orange_puppet_introduction'), bit(12, 'Разбит фонарь с монетами (lantern) №3 — Замок Flowery: orange_puppet_introduction'), bit(13, 'Собрана Розовая монета №4 — Замок Flowery: obscured_bullets'), bit(14, 'Собрана Розовая монета №5 — Замок Flowery: obscured_bullets'), bit(15, 'Собрана Розовая монета №6 — Замок Flowery: obscured_bullets'), bit(16, 'Собрана Розовая монета №7 — Замок Flowery: obscured_bullets')],
+    1317: [bit(3, 'Анти-софтлок: прогресс разговора', 2), bit(4, 'Головоломка №1 — Замок Flowery: sidepuzzle'), bit(5, 'Sidepuzzle: монета для Ferrol'), bit(8, 'Анти-софтлок: цепочка завершена'), bit(10, 'Головоломка №2 — Замок Flowery: sidepuzzle')],
+    1318: [bit(1, 'Trainroom: событие завершено'), bit(10, 'Trainroom: монета для Ferrol'), bit(11, 'Разбит фонарь с монетами (lantern) — Замок Flowery: trainroom')],
+    1320: [bit(0, 'Gloves tower: прогресс пузыря Orange', 3), bit(1, 'Gloves tower: счёт верхних фонарей', 3), bit(6, 'Orange proud / игрок получил урон'), bit(7, 'Башня Gloves завершена'), bit(8, 'Собрана Розовая монета — Замок Flowery: gloves tower'), bit(9, 'Разбит фонарь с монетами (lantern) №1 — Замок Flowery: gloves_tower'), bit(10, 'Разбит фонарь с монетами (lantern) №2 — Замок Flowery: gloves_tower'), bit(11, 'Разбит фонарь с монетами (lantern) №3 — Замок Flowery: gloves_tower'), bit(12, 'Разбит фонарь с монетами (lantern) №4 — Замок Flowery: gloves_tower'), bit(13, 'Разбит фонарь с монетами (lantern) №5 — Замок Flowery: gloves_tower'), bit(14, 'Разбит фонарь с монетами (lantern) №6 — Замок Flowery: gloves_tower'), bit(15, 'Разбит фонарь с монетами (lantern) №7 — Замок Flowery: gloves_tower'), bit(16, 'Разбит фонарь с монетами (lantern) №8 — Замок Flowery: gloves_tower'), bit(17, 'Разбит фонарь с монетами (lantern) №9 — Замок Flowery: gloves_tower')],
+    1321: [bit(0, 'Собрана Розовая монета №1 — Обрыв: finaldash'), bit(1, 'Собрана Розовая монета №2 — Обрыв: finaldash'), bit(2, 'Собрана Розовая монета №3 — Обрыв: finaldash'), bit(3, 'Собрана Розовая монета №4 — Обрыв: finaldash'), bit(4, 'Собрана Розовая монета №5 — Обрыв: finaldash'), bit(5, 'Собрана Розовая монета №6 — Обрыв: finaldash'), bit(6, 'Собрана Розовая монета №7 — Обрыв: finaldash'), bit(7, 'Собрана Розовая монета №8 — Обрыв: finaldash'), bit(8, 'Собрана Розовая монета №9 — Обрыв: finaldash'), bit(9, 'Собрана Розовая монета №10 — Обрыв: finaldash'), bit(10, 'Собрана Розовая монета №11 — Обрыв: finaldash'), bit(11, 'Собрана Розовая монета №12 — Обрыв: finaldash'), bit(12, 'Собрана Розовая монета №13 — Обрыв: finaldash'), bit(13, 'Собрана Розовая монета №14 — Обрыв: finaldash'), bit(14, 'Собрана Розовая монета №15 — Обрыв: finaldash'), bit(15, 'Собрана Розовая монета №16 — Обрыв: finaldash'), bit(16, 'Собрана Розовая монета №17 — Обрыв: finaldash'), bit(17, 'Собрана Розовая монета №18 — Обрыв: finaldash')],
+    1349: [bit(0, 'Собрана Розовая монета №1 — Обрыв: finaldash'), bit(1, 'Собрана Розовая монета №2 — Обрыв: finaldash'), bit(2, 'Собрана Розовая монета №3 — Обрыв: finaldash'), bit(3, 'Собрана Розовая монета №4 — Обрыв: finaldash'), bit(4, 'Собрана Розовая монета №5 — Обрыв: finaldash'), bit(5, 'Собрана Розовая монета №6 — Обрыв: finaldash'), bit(6, 'Собрана Розовая монета №7 — Обрыв: finaldash'), bit(7, 'Собрана Розовая монета №8 — Обрыв: finaldash'), bit(8, 'Собрана Розовая монета №9 — Обрыв: finaldash'), bit(9, 'Собрана Розовая монета №10 — Обрыв: finaldash')],
+    1361: [bit(10, 'Собрана Розовая монета №1 — Обрыв: twirlflowerplatforming'), bit(11, 'Собрана Розовая монета №2 — Обрыв: twirlflowerplatforming'), bit(12, 'Собрана Розовая монета №3 — Обрыв: twirlflowerplatforming'), bit(15, 'Собрана Розовая монета — Обрыв: sethaqua_battle'), bit(16, 'Собрана Розовая монета — Обрыв: twirlflowerwind'), bit(17, 'Собрана Розовая монета №4 — Обрыв: twirlflowerplatforming')],
+    1365: [bit(8, 'Shearyguide: первый Floradinn-куст срезан'), bit(10, 'Shearyguide: второй Floradinn-куст срезан'), bit(11, 'Подсказка обучения поливу уже показана')],
+    1369: [bit(0, 'Садоводство/поливка: вступление пройдено')],
+    1371: [bit(6, 'Полив аквы: путь очищен (метка №1)'), bit(7, 'Полив аквы: путь очищен (метка №2)'), bit(9, 'Путь к сокровищу открыт'), bit(11, 'Полив аквы: путь очищен (метка №3)')],
+    1384: [bit(0, 'Убрана куча листьев (leafpile) №1 — Сад: newdash'), bit(1, 'Убрана куча листьев (leafpile) №2 — Сад: newdash'), bit(2, 'Убрана куча листьев (leafpile) №3 — Сад: newdash'), bit(3, 'Убрана куча листьев (leafpile) №4 — Сад: newdash'), bit(4, 'Убрана куча листьев (leafpile) №5 — Сад: newdash'), bit(5, 'Убрана куча листьев (leafpile) №6 — Сад: newdash'), bit(6, 'Убрана куча листьев (leafpile) №7 — Сад: newdash'), bit(7, 'Убрана куча листьев (leafpile) №8 — Сад: newdash'), bit(8, 'Убрана куча листьев (leafpile) №9 — Сад: newdash'), bit(9, 'Убрана куча листьев (leafpile) №10 — Сад: newdash'), bit(10, 'Убрана куча листьев (leafpile) №11 — Сад: newdash'), bit(11, 'Убрана куча листьев (leafpile) — Сад: firstdash'), bit(12, 'Убрана куча листьев (leafpile) №12 — Сад: newdash'), bit(13, 'Убрана куча листьев (leafpile) №13 — Сад: newdash'), bit(16, 'Убрана куча листьев (leafpile) №14 — Сад: newdash')],
+    1385: [bit(1, 'Срезан куст (shrubbery) №1 — Сад: aquadash_plat'), bit(2, 'Срезан куст (shrubbery) №2 — Сад: aquadash_plat'), bit(3, 'Срезан куст (shrubbery) №3 — Сад: aquadash_plat'), bit(4, 'Срезан куст (shrubbery) №4 — Сад: aquadash_plat'), bit(5, 'Срезан куст (shrubbery) №5 — Сад: aquadash_plat'), bit(6, 'Срезан куст (shrubbery) №6 — Сад: aquadash_plat'), bit(7, 'Срезан куст (shrubbery) №7 — Сад: aquadash_plat'), bit(8, 'Срезан куст (shrubbery) №8 — Сад: aquadash_plat'), bit(9, 'Срезан куст (shrubbery) №9 — Сад: aquadash_plat'), bit(10, 'Срезан куст (shrubbery) №10 — Сад: aquadash_plat'), bit(11, 'Срезан куст (shrubbery) №11 — Сад: aquadash_plat'), bit(12, 'Срезан куст (shrubbery) №12 — Сад: aquadash_plat'), bit(13, 'Срезан куст (shrubbery) №13 — Сад: aquadash_plat')],
+    1399: [bit(0, 'Hopschef: состояние хлеба (0 обычный · 1 разрушен · 2 пройдено)', 2)],
+    1430: [bit(0, 'Катсцена Flowery cut1: запущена'), bit(1, 'Катсцена Flowery cut2: запущена'), bit(2, 'Катсцена Flowery cut3: запущена'), bit(3, 'Катсцена Flowery cut4: запущена'), bit(4, 'Катсцена Flowery cut5: запущена'), bit(5, 'Катсцена Flowery cut6: запущена'), bit(6, 'Катсцена Flowery cut7: запущена'), bit(7, 'Катсцена Flowery cut8: запущена'), bit(8, 'Катсцена Flowery cut9: запущена'), bit(9, 'Катсцена Flowery cut10: запущена'), bit(10, 'Катсцена Flowery cut11: запущена'), bit(11, 'Катсцена Flowery cut12: запущена'), bit(12, 'Катсцена Flowery cut13: запущена'), bit(13, 'Катсцена Flowery cut14: запущена'), bit(14, 'Катсцена Flowery cut15: запущена'), bit(15, 'Катсцена Flowery cut16: запущена')],
+    1434: [bit(0, 'Ferroll: отряд разбит молотом', 4), bit(4, 'Ferroll: деньги разбиты молотом', 4)],
+    1442: [bit(3, 'Darkfruit tree разбито'), bit(9, 'Узел верёвки — Сад: aquaplatforming'), bit(10, 'Собрана Розовая монета №1 — Сад: aquaplatforming'), bit(11, 'Собрана Розовая монета №2 — Сад: aquaplatforming'), bit(12, 'Сад: aquahole — bell jump провален'), bit(13, 'Собрана Розовая монета №1 — Сад: aquahole_left'), bit(14, 'Собрана Розовая монета №2 — Сад: aquahole_left'), bit(15, 'Собрана Розовая монета №3 — Сад: aquahole_left')],
+    1715: [bit(10, 'Orange Puppet intro: скрыть объект')],
+    1731: [bit(16, 'Узел верёвки — Обрыв: bonuscombat'), bit(17, 'Windstruggler / Розовая монета (учёт Ferrol)'), bit(18, 'Обрыв: bonuscombat — поздние объекты')],
+    1737: [bit(0, 'Terracotta foxhunt: drop-маркер'), bit(1, 'Foxhunt: лис 1'), bit(2, 'Foxhunt: лис 2'), bit(3, 'Foxhunt: лис 3'), bit(10, 'Foxhunt: пуля/лис №1 — Замок Flowery'), bit(11, 'Foxhunt: пуля/лис №2 — Замок Flowery'), bit(12, 'Foxhunt: пуля/лис №3 — Замок Flowery'), bit(13, 'Foxhunt: пуля/лис №4 — Замок Flowery')],
+    1749: [bit(0, 'В додзё вызван Ballperson'), bit(1, 'В додзё вызван Trashy'), bit(2, 'В додзё вызван Nubert')],
+    1762: [bit(0, 'Petal Feather: подсветка в меню', 2), bit(1, 'Ferroll / silver hammer interaction'), bit(2, 'Shihat / scarecrow / sandtrap interaction', 2)],
+    1817: [bit(0, 'Документы: общий прогресс чтения', 2), bit(2, 'Сначала прочитана левая бумага'), bit(3, 'Сначала прочитана правая бумага')],
+    1818: [bit(0, 'Top pinkdoor: shortcut открыт'), bit(2, 'Top pinkdoor: разговор двери'), bit(10, 'Узел верёвки — Замок Flowery: top_pinkdoor')],
+    1825: [bit(0, 'Сад: aquadash — монета для Ferrol'), bit(1, 'Сад: aquadash — враги/волна пройдены'), bit(2, 'Срезан куст (shrubbery) №1 — Сад: aquadash_plat'), bit(3, 'Срезан куст (shrubbery) №2 — Сад: aquadash_plat'), bit(4, 'Срезан куст (shrubbery) №3 — Сад: aquadash_plat'), bit(5, 'Срезан куст (shrubbery) №4 — Сад: aquadash_plat'), bit(6, 'Срезан куст (shrubbery) №5 — Сад: aquadash_plat'), bit(7, 'Срезан куст (shrubbery) №6 — Сад: aquadash_plat'), bit(8, 'Срезан куст (shrubbery) №7 — Сад: aquadash_plat'), bit(9, 'Срезан куст (shrubbery) №8 — Сад: aquadash_plat'), bit(10, 'Срезан куст (shrubbery) №9 — Сад: aquadash_plat'), bit(11, 'Срезан куст (shrubbery) №10 — Сад: aquadash_plat'), bit(12, 'Срезан куст (shrubbery) №11 — Сад: aquadash_plat'), bit(13, 'Срезан куст (shrubbery) №12 — Сад: aquadash_plat'), bit(14, 'Срезан куст (shrubbery) №13 — Сад: aquadash_plat'), bit(15, 'Срезан куст (shrubbery) №14 — Сад: aquadash_plat'), bit(16, 'Срезан куст (shrubbery) №15 — Сад: aquadash_plat'), bit(17, 'Срезан куст (shrubbery) №16 — Сад: aquadash_plat'), bit(18, 'Срезан куст (shrubbery) — Сад: aquadash')],
+    1845: [bit(0, 'Top challenge: предупреждение'), bit(1, 'Top challenge: узел Ferrol'), bit(2, 'Прогресс верхнего испытания замка — Замок Flowery: top_challenge'), bit(5, 'Top descent: Windstruggler')],
+    1855: [bit(0, 'Катсцена Flowery cut1: досмотрена'), bit(1, 'Катсцена Flowery cut2: досмотрена'), bit(2, 'Катсцена Flowery cut3: досмотрена'), bit(3, 'Катсцена Flowery cut4: досмотрена'), bit(4, 'Катсцена Flowery cut5: досмотрена'), bit(5, 'Катсцена Flowery cut6: досмотрена'), bit(6, 'Катсцена Flowery cut7: досмотрена'), bit(7, 'Катсцена Flowery cut8: досмотрена'), bit(8, 'Катсцена Flowery cut9: досмотрена'), bit(9, 'Катсцена Flowery cut10: досмотрена'), bit(10, 'Катсцена Flowery cut11: досмотрена'), bit(11, 'Катсцена Flowery cut12: досмотрена'), bit(12, 'Катсцена Flowery cut13: досмотрена'), bit(13, 'Катсцена Flowery cut14: досмотрена'), bit(14, 'Катсцена Flowery cut15: досмотрена'), bit(15, 'Катсцена Flowery cut16: досмотрена')],
+    1856: [bit(0, 'Cafe friends: цветок 1', 2), bit(2, 'Cafe friends: цветок 2', 2), bit(4, 'Cafe friends: цветок 3', 2), bit(6, 'Cafe friends: цветок 4', 2), bit(8, 'Cafe friends: цветок 5', 2), bit(10, 'Cafe friends: цветок 6', 2), bit(12, 'Cafe friends: цветок 7', 2)],
+    1859: [bit(0, 'East Cliff: прогресс Octave'), bit(1, 'Прогресс восточного обрыва (eastcliff) №1 — Обрыв: eastcliff'), bit(2, 'Прогресс восточного обрыва (eastcliff) №2 — Обрыв: eastcliff'), bit(3, 'Прогресс восточного обрыва (eastcliff) №3 — Обрыв: eastcliff'), bit(4, 'Прогресс восточного обрыва (eastcliff) №4 — Обрыв: eastcliff'), bit(5, 'Прогресс восточного обрыва (eastcliff) №5 — Обрыв: eastcliff'), bit(6, 'Прогресс восточного обрыва (eastcliff) №6 — Обрыв: eastcliff'), bit(7, 'Прогресс восточного обрыва (eastcliff) №7 — Обрыв: eastcliff'), bit(8, 'Прогресс восточного обрыва (eastcliff) №8 — Обрыв: eastcliff'), bit(9, 'Прогресс восточного обрыва (eastcliff) №9 — Обрыв: eastcliff'), bit(10, 'Узел верёвки — Обрыв: eastcliff'), bit(11, 'Прогресс восточного обрыва (eastcliff) №10 — Обрыв: eastcliff'), bit(12, 'Прогресс восточного обрыва (eastcliff) №11 — Обрыв: eastcliff'), bit(13, 'Прогресс восточного обрыва (eastcliff) №12 — Обрыв: eastcliff'), bit(14, 'Прогресс восточного обрыва (eastcliff) №13 — Обрыв: eastcliff'), bit(15, 'Прогресс восточного обрыва (eastcliff) №14 — Обрыв: eastcliff'), bit(16, 'Прогресс восточного обрыва (eastcliff) №15 — Обрыв: eastcliff'), bit(17, 'Прогресс восточного обрыва (eastcliff) №16 — Обрыв: eastcliff'), bit(18, 'Прогресс восточного обрыва (eastcliff) №17 — Обрыв: eastcliff')],
+    1860: [bit(0, 'Куплен цветок Seth → SethSpecs (броня)'), bit(1, 'Куплен цветок Blue → BlueShoes (оружие)'), bit(2, 'Куплен цветок Aqua → AquaKnife (оружие)'), bit(3, 'Куплен цветок Yellow → YellowHat (броня)'), bit(4, 'Куплен цветок Orange → O.Glove (броня)'), bit(5, 'Куплен цветок Green → GreenApron (броня)'), bit(6, 'Куплен цветок Flowery → FloweryScarf (оружие)')],
+    1867: [bit(0, 'Dogplatforming: troll / treasure room'), bit(1, 'Dogplatforming: disarm hook'), bit(10, 'Собрана Розовая монета №1 — Собачий платформинг'), bit(11, 'Собрана Розовая монета №2 — Собачий платформинг')],
+    1878: [bit(0, 'Шорткат Hopschef'), bit(1, 'Шорткат Aquahole'), bit(2, 'Шорткат Top Pinkdoor'), bit(3, 'Шорткат Final Save'), bit(4, 'Шорткат Top of Castle / Green Checkpoint')],
+    1880: [bit(1, 'Susie chase: номер круга', 3)],
+    1891: [bit(0, 'Собрана Розовая монета №1 — Замок Flowery: bounce_1'), bit(1, 'Собрана Розовая монета №2 — Замок Flowery: bounce_1'), bit(2, 'Собрана Розовая монета №3 — Замок Flowery: bounce_1'), bit(3, 'Собрана Розовая монета №4 — Замок Flowery: bounce_1'), bit(4, 'Собрана Розовая монета — Замок Flowery: bounce_3'), bit(10, 'Головоломка №1 — Замок Flowery: right_puzzle'), bit(11, 'Головоломка №2 — Замок Flowery: right_puzzle'), bit(12, 'Головоломка №3 — Замок Flowery: right_puzzle'), bit(14, 'Головоломка №1 — Замок Flowery: sidepuzzle'), bit(15, 'Головоломка №2 — Замок Flowery: sidepuzzle')],
+    1892: [bit(0, 'Катсцена Flowery cut17: запущена'), bit(1, 'Катсцена Flowery cut18: запущена'), bit(2, 'Катсцена Flowery cut19: запущена'), bit(3, 'Катсцена Flowery cut20: запущена'), bit(4, 'Катсцена Flowery cut21: запущена'), bit(5, 'Катсцена Flowery cut22: запущена'), bit(6, 'Катсцена Flowery cut23: запущена'), bit(7, 'Катсцена Flowery cut24: запущена'), bit(8, 'Катсцена Flowery cut25: запущена'), bit(9, 'Катсцена Flowery cut26: запущена'), bit(10, 'Катсцена Flowery cut27: запущена'), bit(11, 'Катсцена Flowery cut28: запущена'), bit(12, 'Катсцена Flowery cut29: запущена'), bit(13, 'Катсцена Flowery cut30: запущена'), bit(14, 'Катсцена Flowery cut31: запущена'), bit(15, 'Катсцена Flowery cut32: запущена')],
+    1893: [bit(0, 'Катсцена Flowery cut17: досмотрена'), bit(1, 'Катсцена Flowery cut18: досмотрена'), bit(2, 'Катсцена Flowery cut19: досмотрена'), bit(3, 'Катсцена Flowery cut20: досмотрена'), bit(4, 'Катсцена Flowery cut21: досмотрена'), bit(5, 'Катсцена Flowery cut22: досмотрена'), bit(6, 'Катсцена Flowery cut23: досмотрена'), bit(7, 'Катсцена Flowery cut24: досмотрена'), bit(8, 'Катсцена Flowery cut25: досмотрена'), bit(9, 'Катсцена Flowery cut26: досмотрена'), bit(10, 'Катсцена Flowery cut27: досмотрена'), bit(11, 'Катсцена Flowery cut28: досмотрена'), bit(12, 'Катсцена Flowery cut29: досмотрена'), bit(13, 'Катсцена Flowery cut30: досмотрена'), bit(14, 'Катсцена Flowery cut31: досмотрена'), bit(15, 'Катсцена Flowery cut32: досмотрена')],
+  };
+  function flagDoc(i) {
+    const doc = I18n.FLAG_DOCS ? I18n.FLAG_DOCS[i] : null;
+    const bits = FLAG_BIT_DOCS[i];
+    return bits ? { ...(doc || {}), bits } : doc;
+  }
   function flagAuto(i) { return window.KnightFlagsAuto ? window.KnightFlagsAuto[i] : null; }
   function flagDetail(i) { return window.KnightFlagsDetail ? window.KnightFlagsDetail[i] : null; }
-
+  function trimNumber(v) {
+    return String(v).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+  }
+  function flagNumberDisplay(i, value) {
+    if (Number(i) === 1440) return trimNumber((Number(value) || 0) / 30);
+    return value;
+  }
+  function flagNumberStored(i, value) {
+    if (Number(i) === 1440) return Math.round((Number(value) || 0) * 30);
+    return value;
+  }
+  function flagNumberAttr(i, attr, value) {
+    if (value === undefined || value === null || value === '') return '';
+    const v = Number(i) === 1440 ? trimNumber(Number(value) / 30) : value;
+    return ` ${attr}="${esc(v)}"`;
+  }
+  function flagNumberExtra(i) {
+    return Number(i) === 1440 ? ' step="0.001" data-flag-unit="seconds" title="Введите секунды; в сохранение запишутся тики игры (секунды × 30)."' : '';
+  }
+  function flagNumberSuffix(i) {
+    return Number(i) === 1440 ? ' <span style="color:var(--text-3);font-size:13px;">сек.</span>' : '';
+  }
 
   const Avail = window.KnightAvailability || null;
   function availIntro(kind, id) {
@@ -282,12 +360,12 @@
     susie:    { name:'Сьюзи',    color:'#ea79c8', face:['game-sprites/faces/susie_0.png'] },
     ralsei:   { name:'Ральзей',  color:'#b5e61d', face:['game-sprites/faces/ralsei_0.png'] },
     noelle:   { name:'Ноэль',    color:'#ffff00', face:['game-sprites/faces/noelle_0.png','game-sprites/faces/noelle_1.png'] },
-    king:     { name:'Король',   color:'#b07be8', face:['game-sprites/faces/king_0.png','game-sprites/faces/king_1.png'] },
+    king:     { name:'Король',   color:'#b07be8', face:['game-sprites/faces/king_0.png'] },
     lancer:   { name:'Лансер',   color:'#3aa0ff', face:['game-sprites/faces/lancer_0.png','game-sprites/faces/lancer_1.png'] },
     spamton:  { name:'Спамтон',  color:'#ffd000', face:['game-sprites/faces/spamton_0.png','game-sprites/faces/spamton_1.png'] },
     jevil:    { name:'Джевил',   color:'#7affc6' },
-    seam:     { name:'Шов',      color:'#5ec2c2', face:['game-sprites/faces/seam_0.png','game-sprites/faces/seam_1.png'] },
-    tenna:    { name:'Тенна',    color:'#ff5a5a', face:['game-sprites/faces/tenna_0.png','game-sprites/faces/tenna_1.png'] },
+    seam:     { name:'Seam',     color:'#5ec2c2', face:['game-sprites/faces/seam_0.png','game-sprites/faces/seam_1.png'] },
+    tenna:    { name:'Тенна',    color:'#ff5a5a', face:['game-sprites/faces/tenna_0.png'] },
     rouxls:   { name:'Каард',    color:'#7fd4ff', face:['game-sprites/faces/rouxls_0.png'] },
     ramb:     { name:'Рамб',     color:'#8fd36b' },
     gerson:   { name:'Герсон',   color:'#6fd6b0' },
@@ -299,6 +377,9 @@
     rudy:     { name:'Руди',     color:'#e89a4a', face:['game-sprites/faces/rudy_0.png'] },
     toriel:   { name:'Ториэль',  color:'#e3c98a', face:['game-sprites/faces/toriel_0.png'] },
     swatch:   { name:'Свотч',    color:'#d0d0d0' },
+    asgore:   { name:'Азгор',    color:'#e8a13a', face:['game-sprites/faces/asgore_0.png','game-sprites/faces/asgore_1.png'] },
+    flowery:  { name:'Flowery',  color:'#ff5fa2', face:['game-sprites/faces/flowery_0.png','game-sprites/faces/flowery_1.png'] },
+    sans:     { name:'Санс',     color:'#ffffff', face:['game-sprites/faces/sans_0.png'] },
   };
   function faceHTML(who) {
     const sp = SPEAKERS[who] || SPEAKERS.narration;
@@ -367,6 +448,7 @@
       const frames = face && face.getAttribute('data-frames') ? face.getAttribute('data-frames').split('|') : null;
       const img = face && face.querySelector('img');
       const twoFrame = frames && frames.length > 1;
+      const typeSound = box.getAttribute('data-typesound');
       lines.forEach((el) => { el._full = el.getAttribute('data-full') || el.textContent; el.textContent = ''; });
       box._timers = box._timers || [];
       box._typing = false;
@@ -386,7 +468,16 @@
         const el = lines[li]; const full = el._full; let i = 0;
         startMouth();
         const step = () => {
-          if (i <= full.length) { el.textContent = full.slice(0, i); i += 1; const t = setTimeout(step, 35); box._timers.push(t); }
+          if (i <= full.length) {
+            el.textContent = full.slice(0, i);
+            const ch = full[i - 1];
+            if (typeSound && i > 0 && ch && ch !== ' ' && i % 2 === 0) playTypeSound(typeSound);
+            i += 1;
+            let delay = 35;
+            if (typeSound && ch && '.!?…'.includes(ch)) delay = 260;
+            else if (typeSound && ch && ',«»'.includes(ch)) delay = 130;
+            const t = setTimeout(step, delay); box._timers.push(t);
+          }
           else { li += 1; const t = setTimeout(typeLine, 120); box._timers.push(t); }
         };
         step();
@@ -396,6 +487,18 @@
     });
   }
 
+  const _typeAudioCache = {};
+  function playTypeSound(name) {
+    try {
+      const src = 'game-sprites/snd/' + name + '.wav';
+      let base = _typeAudioCache[src];
+      if (!base) { base = new Audio(src); _typeAudioCache[src] = base; }
+      const a = base.cloneNode();
+      a.volume = 0.45;
+      a.play().catch(() => {});
+    } catch (e) {}
+  }
+
   function openFlagDetailModal(index) {
     const d = flagDetail(index); const doc = flagDoc(index);
     const name = flagName(index);
@@ -403,6 +506,7 @@
     if (doc && doc.description) body += `<p class="helper" style="margin:0 0 12px;color:var(--text-2)">${esc(doc.description)}</p>`;
     if (d && d.detail) body += `<span class="flag-detail" style="margin-bottom:12px">${esc(d.detail)}</span>`;
     if (d && d.fx) body += fxHTML(d.fx);
+    if (d && d.sprites && d.sprites.length) body += spritesHTML(d.sprites);
     if (doc && doc.values) {
       body += `<div style="margin:12px 0 4px;color:var(--text-3);font-size:16px;text-transform:uppercase">Значения</div>
         <div class="bullet-list" style="padding-left:18px">${Object.entries(doc.values).map(([k,v]) => `<li><b style="color:var(--yellow)">${esc(k)}</b> — ${esc(v)}</li>`).join('')}</div>`;
@@ -410,6 +514,7 @@
     if (d && d.lines && d.lines.length) body += `<div id="dlgVariations">${renderLines(d.lines)}</div>`;
     if (d && d.dialogue) body += `<p class="helper" style="margin-top:10px;color:var(--green)">${esc(d.dialogue)}</p>`;
     if (d && d.related && d.related.length) body += `<div class="flag-related" style="margin-top:12px">Связанные флаги: ${d.related.map(r => `<button type="button" class="flag-link" data-goflag="${r}">#${r} ${esc(flagName(r))}</button>`).join(' ')}</div>`;
+    if (d && d.conflicts && d.conflicts.length) body += conflictsHTML(index);
     if (!body) {
       const a = flagAuto(index);
       const hint = a ? flagAutoHint(a.n) : '';
@@ -429,7 +534,7 @@
     runTypewriter(byId('dlgVariations'));
   }
 
-  function hasFlagHint(i) { const d = flagDetail(i); const doc = flagDoc(i); return !!(d && (d.detail || d.fx || (d.lines && d.lines.length) || d.dialogue || (d.related && d.related.length))) || !!(doc && (doc.description || doc.values)); }
+  function hasFlagHint(i) { const d = flagDetail(i); const doc = flagDoc(i); return !!(d && (d.detail || d.fx || (d.sprites && d.sprites.length) || (d.lines && d.lines.length) || d.dialogue || (d.related && d.related.length) || (d.conflicts && d.conflicts.length))) || !!(doc && (doc.description || doc.values)); }
 
   function hintBtn(i) {
     if (!hasFlagHint(i)) return '';
@@ -440,6 +545,16 @@
     if (!fx) return '';
     if (fx.proph) {
       return `<div class="flag-fx-wrap"><canvas class="proph-fx" width="360" height="250" data-proph="${esc(JSON.stringify(fx.proph))}"></canvas></div>`;
+    }
+    if (fx.states && fx.states.length) {
+      const cards = fx.states.map((s) => {
+        const media = s.img
+          ? `<img src="${esc(s.img)}" alt="">`
+          : `<span class="flag-fx-state-note">${esc(s.note || '')}</span>`;
+        return `<figure class="flag-fx-state">${media}<figcaption>${esc(s.cond || '')}</figcaption></figure>`;
+      }).join('');
+      const cap = fx.cap ? `<span class="flag-fx-states-cap">${esc(fx.cap)}</span>` : '';
+      return `<div class="flag-fx-states-wrap">${cap}<div class="flag-fx-states">${cards}</div></div>`;
     }
     if (!fx.frames || !fx.frames.length) return '';
     const cls = ['flag-fx'];
@@ -460,9 +575,183 @@
     let html = '';
     if (d.detail) html += `<span class="flag-detail">${esc(d.detail)}</span>`;
     if (d.fx) html += fxHTML(d.fx);
+    if (d.sprites && d.sprites.length) html += spritesHTML(d.sprites);
     if (d.lines && d.lines.length) html += renderLines(d.lines);
     if (d.related && d.related.length) html += `<span class="flag-related">Связанные флаги: ${d.related.map(r => `<button type="button" class="flag-link" data-goflag="${r}">#${r} ${esc(flagName(r))}</button>`).join(' ')}</span>`;
+    if (d.conflicts && d.conflicts.length) html += conflictsHTML(i);
     return html ? `<div class="flag-extra">${html}</div>` : '';
+  }
+  function spritesHTML(sprites) {
+    const items = sprites.map(s => `<figure class="flag-fx-state"><img src="game-sprites/flagfx/${esc(s.src)}.png" alt="${esc(s.src)}" onerror="this.closest('figure').style.display='none'"><figcaption>${esc(s.cond || '')}</figcaption></figure>`).join('');
+    return `<div class="flag-fx-states-wrap"><span class="flag-fx-states-cap">Спрайт в игре:</span><div class="flag-fx-states">${items}</div></div>`;
+  }
+  function flagConflicts(i) { const d = flagDetail(i); return (d && d.conflicts) || []; }
+  function conflictActive(save, i) {
+    if (!save) return false;
+    const val = Number(save.flags[i] || 0);
+    return flagConflicts(i).some(c => (c.self || []).map(Number).includes(val) && (c.otherVals || []).map(Number).includes(Number(save.flags[c.other] || 0)));
+  }
+  function conflictsHTML(i) {
+    const cs = flagConflicts(i); if (!cs.length) return '';
+    const slot = current(); const save = slot && slot.save; const val = save ? Number(save.flags[i] || 0) : null;
+    let anyActive = false;
+    const items = cs.map(c => {
+      const active = save && (c.self || []).map(Number).includes(val) && (c.otherVals || []).map(Number).includes(Number(save.flags[c.other] || 0));
+      if (active) anyActive = true;
+      return `<div class="conflict-item">✖ Несовместим с <button type="button" class="flag-link" data-goflag="${c.other}">#${c.other} ${esc(flagName(c.other))}</button>${c.note ? ` — ${esc(c.note)}` : ''}${active ? ' <b style="color:var(--red)">⚠ сейчас установлена невозможная комбинация!</b>' : ''}</div>`;
+    }).join('');
+    return `<div class="flag-conflicts${anyActive ? ' has-active' : ''}"><span class="flag-conflicts-cap">Взаимоисключающие флаги:</span>${items}</div>`;
+  }
+  let _conflictIndex = null;
+  function buildConflictIndex() {
+    if (_conflictIndex) return _conflictIndex;
+    const idx = {}; const D = window.KnightFlagsDetail || {};
+    for (const k in D) {
+      const cs = D[k].conflicts; if (!cs || !cs.length) continue;
+      const owner = Number(k);
+      for (const c of cs) {
+        const rec = { owner, self: c.self || [], other: c.other, otherVals: c.otherVals || [], note: c.note };
+        (idx[owner] = idx[owner] || []).push(rec);
+        (idx[c.other] = idx[c.other] || []).push(rec);
+      }
+    }
+    _conflictIndex = idx; return idx;
+  }
+  function activeConflictsFor(save, i) {
+    if (!save) return [];
+    const recs = buildConflictIndex()[i] || []; const out = []; const seen = new Set();
+    for (const c of recs) {
+      const key = Math.min(c.owner, c.other) + '|' + Math.max(c.owner, c.other);
+      if (seen.has(key)) continue;
+      const ownerVal = Number(save.flags[c.owner] || 0), otherVal = Number(save.flags[c.other] || 0);
+      if (c.self.map(Number).includes(ownerVal) && c.otherVals.map(Number).includes(otherVal)) { out.push(c); seen.add(key); }
+    }
+    return out;
+  }
+  function warnConflicts(save, i) {
+    const ac = activeConflictsFor(save, i);
+    if (!ac.length) return;
+    openConflictSansModal(ac[0]);
+  }
+  function openConflictSansModal(rec) {
+    const slot = current(); if (!slot) return;
+    if (els.modalRoot.innerHTML) return;
+    const label1 = `#${rec.owner} ${flagName(rec.owner)}`;
+    const label2 = `#${rec.other} ${flagName(rec.other)}`;
+    const parts = [
+      '* ЧЕЛОВЕК, я помню твои действия, но позволь помочь.',
+      `«${label1}» и «${label2}» несовместимы.`,
+      'Так что будь осторожнее и не устрой случайный геноцид своего мира в другой игре...'
+    ];
+    const linesHtml = parts.map((full) => {
+      const cls = full.startsWith('* ') ? 'dlg-line' : 'dlg-line nobullet';
+      return `<div class="${cls}" data-full="${esc(full)}">${esc(full)}</div>`;
+    }).join('');
+    els.modalRoot.innerHTML = `
+      <div class="modal-overlay" data-modal-overlay>
+        <div class="modal sans-conflict-modal">
+          <div class="dlg gamebox sans-box" data-typesound="snd_txtsans">
+            <span class="tbx tbx-tl"></span><span class="tbx tbx-tr"></span><span class="tbx tbx-bl"></span><span class="tbx tbx-br"></span>
+            <span class="tbx-edge tbx-top"></span><span class="tbx-edge tbx-bottom"></span>
+            <span class="tbx-edge tbx-left"></span><span class="tbx-edge tbx-right"></span>
+            ${faceHTML('sans')}
+            <div class="dlg-body">${linesHtml}</div>
+          </div>
+          <div class="sans-conflict-actions">
+            <button type="button" class="btn" id="sansClose">Закрыть окно</button>
+            <button type="button" class="btn primary" id="sansRevert">Откатить оба флага</button>
+          </div>
+        </div>
+      </div>`;
+    byId('sansClose').addEventListener('click', closeModal);
+    byId('sansRevert').addEventListener('click', () => {
+      const orig = slot.origFlags || {};
+      slot.save.flags[rec.owner] = Number(orig[rec.owner] || 0);
+      slot.save.flags[rec.other] = Number(orig[rec.other] || 0);
+      touch(); closeModal(); render();
+      toast('Флаги откатаны к исходным значениям');
+    });
+    els.modalRoot.querySelector('[data-modal-overlay]').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeModal(); });
+    runTypewriter(els.modalRoot);
+  }
+  function allActiveConflicts(save) {
+    if (!save) return [];
+    const idx = buildConflictIndex(); const out = []; const seen = new Set();
+    for (const owner in idx) {
+      for (const c of idx[owner]) {
+        const key = Math.min(c.owner, c.other) + '|' + Math.max(c.owner, c.other);
+        if (seen.has(key)) continue;
+        const ov = Number(save.flags[c.owner] || 0), tv = Number(save.flags[c.other] || 0);
+        if (c.self.map(Number).includes(ov) && c.otherVals.map(Number).includes(tv)) { out.push(c); seen.add(key); }
+      }
+    }
+    return out;
+  }
+  function conflictBanner(save) {
+    const ac = allActiveConflicts(save);
+    if (!ac.length) return '';
+    const rows = ac.map(c => `<div>✖ <button type="button" class="flag-link" data-goflag="${c.owner}">#${c.owner} ${esc(flagName(c.owner))}</button> ↔ <button type="button" class="flag-link" data-goflag="${c.other}">#${c.other} ${esc(flagName(c.other))}</button>${c.note ? ` — ${esc(c.note)}` : ''}</div>`).join('');
+    return `<div class="conflict-banner">⚠ В этом сейве обнаружено невозможных комбинаций флагов: ${ac.length}${rows}</div>`;
+  }
+
+  function plotLabelHTML(chapter, value) {
+    const ch = Number(chapter), v = Number(value);
+    const table = window.KnightPlot && window.KnightPlot[ch];
+    if (!table || !Object.keys(table).length) {
+      return `<span class="plot-name plot-none">Гл.${ch}: точные названия этапов недоступны для этой главы</span>`;
+    }
+    if (table[v]) {
+      const r = table[v];
+      const src = r.code ? ' <span class="plot-unused">(этап определён по коду Гл.5)</span>' : (r.u ? ' <span class="plot-unused">(не используется)</span>' : '');
+      return `<span class="plot-name">▸ ${esc(r.n || ('этап ' + v))}${src}</span>` +
+        (r.d ? `<span class="plot-desc">${esc(r.d)}</span>` : '');
+    }
+    const keys = Object.keys(table).map(Number).sort((a, b) => a - b);
+    let lower = null, higher = null;
+    for (const k of keys) { if (k <= v) lower = k; if (k > v && higher === null) higher = k; }
+    if (lower !== null) {
+      return `<span class="plot-name plot-approx">Промежуточный кадр — сразу после «${esc(table[lower].n)}» (этап ${lower})` +
+        (higher !== null ? `, перед «${esc(table[higher].n)}» (этап ${higher})` : '') + `</span>`;
+    }
+    return `<span class="plot-name plot-none">Ранний кадр — до «${esc(table[keys[0]].n)}» (этап ${keys[0]})</span>`;
+  }
+
+  function plotOptions(chapter, selected) {
+    const ch = Number(chapter), sel = Number(selected);
+    const table = (window.KnightPlot && window.KnightPlot[ch]) || {};
+    const keys = Object.keys(table).map(Number).sort((a, b) => a - b);
+    let html = '', hasSel = false;
+    for (const k of keys) {
+      const r = table[k] || {};
+      const nm = r.n || ('этап ' + k);
+      const extra = r.code ? ' ⟨по коду⟩' : (r.u ? ' (не исп.)' : '');
+      if (k === sel) hasSel = true;
+      html += `<option value="${k}"${k === sel ? ' selected' : ''}>${esc(k + ' — ' + nm + extra)}</option>`;
+    }
+    if (!hasSel) {
+
+      let lo = null, hi = null;
+      for (const k of keys) { if (k <= sel) lo = k; if (k > sel && hi === null) hi = k; }
+      let lab;
+      if (lo !== null) lab = sel + ' — после «' + (table[lo].n || ('этап ' + lo)) + '» (промежуточное)';
+      else if (hi !== null) lab = sel + ' — до «' + (table[hi].n || ('этап ' + hi)) + '» (промежуточное)';
+      else lab = sel + ' — (значение вне известных этапов)';
+      html = `<option value="${sel}" selected>${esc(lab)}</option>` + html;
+    }
+    return html;
+  }
+
+  function roomValidForSave(save) {
+    const sel = Number(save.room), ch = Number(save.meta.chapter);
+    const rawMode = sel < 10000 && ch >= 1 && ch <= 4;
+    let list;
+    if (rawMode) { const lo = ch * 10000; list = Core.DATA.rooms.filter(([x]) => x >= lo && x <= lo + 9999).map(([x]) => x - lo); }
+    else list = Core.DATA.rooms.map(([x]) => x);
+    return list.some((x) => Number(x) === sel);
+  }
+  function dogWarningBanner(save) {
+    if (!save || roomValidForSave(save)) return '';
+    return `<div class="dog-banner"><img class="dog-ic" src="game-sprites/dogcheck/spr_dogcheck_head_0.png" alt="dog_check"><div><b>⚠ Возможна «собака» (dog_check) при запуске.</b> Комната <code>#${esc(save.room)}</code> не входит в список комнат Главы ${esc(save.meta.chapter)}. При загрузке игра проверяет комнату через <code>scr_dogcheck()</code>, и сохранение <b>не запустится</b>. Выберите настоящую комнату этой главы в поле «Текущая комната».</div></div>`;
   }
 
   function getGameColor(value) {
@@ -501,9 +790,9 @@
         .map(([k,v]) => `<option value="${k}"${Number(k)===Number(value)?' selected':''}>${esc(v)} (${k})</option>`).join('');
       control = `<select data-path="flags.${index}">${opts}</select>`;
     } else {
-      const min = doc && doc.min !== undefined ? ` min="${doc.min}"` : '';
-      const max = doc && doc.max !== undefined ? ` max="${doc.max}"` : '';
-      control = `<input type="number" data-path="flags.${index}" value="${esc(value)}"${min}${max}>`;
+      const min = doc && doc.min !== undefined ? flagNumberAttr(index, 'min', doc.min) : '';
+      const max = doc && doc.max !== undefined ? flagNumberAttr(index, 'max', doc.max) : '';
+      control = `<input type="number" data-path="flags.${index}" value="${esc(flagNumberDisplay(index, value))}"${min}${max}${flagNumberExtra(index)}>${flagNumberSuffix(index)}`;
     }
     const desc = doc && doc.description ? `<span class="hint">${esc(doc.description)}</span>` : '';
     return `<label class="field"><span>${esc(name)} <span style="color:var(--text-3)">#${index}</span></span>${control}${desc}${flagDetailHTML(index)}</label>`;
@@ -511,6 +800,7 @@
 
   function renderChrome() {
     const slot = current();
+    applyChapterBackground(slot ? slot.save.meta.chapter : 0);
     const warns = slot ? routeWarnCounts(slot.save) : {};
     els.routeTabs.innerHTML = Object.entries(ROUTES).map(([key,r]) => {
       const locked = !slot && key !== 'about' && key !== 'welcome';
@@ -552,9 +842,32 @@
     if (!slot && state.route !== 'about') { els.content.innerHTML = renderNoSave(); persist(); return; }
     const renderers = { welcome:renderWelcome, inventory:renderInventory, party:renderParty, 'light-world':renderLightWorld, story:renderStory, recruits:renderRecruits, flags:renderFlags, about:renderAbout };
     els.content.innerHTML = (renderers[state.route] || renderWelcome)(slot);
+    mountEquipMenu();
+    mountLightMenu();
     persist();
   }
 
+  function mountLightMenu() {
+    if (!window.KnightLightMenu) return;
+    const host = els.content.querySelector('#light-menu-mount');
+    const slot = current();
+    if (!host || !slot) { window.KnightLightMenu.unmount(); return; }
+    window.KnightLightMenu.mount(host, {
+      save: slot.save,
+      onChange: function () { touch(slot); softChrome(); },
+    });
+  }
+
+  function mountEquipMenu() {
+    if (!window.KnightEquipMenu) return;
+    const host = els.content.querySelector('#equip-menu-mount');
+    const slot = current();
+    if (!host || !slot) { window.KnightEquipMenu.unmount(); return; }
+    window.KnightEquipMenu.mount(host, {
+      save: slot.save,
+      onChange: function () { touch(slot); softChrome(); },
+    });
+  }
 
   function openFileNamingModal() {
     els.modalRoot.innerHTML = `
@@ -571,7 +884,7 @@
               </tr>
             </thead>
             <tbody>
-              ${[1,2,3,4].map(ch => `
+              ${[1,2,3,4,5].map(ch => `
                 <tr style="border-bottom:1px solid var(--border);"><td colspan="3" style="padding:8px 0 2px;font-size:18px;"><u>Глава ${ch}</u></td></tr>
                 <tr style="border-bottom:1px solid var(--border);"><td style="padding:5px 10px 5px 0;font-size:16px;"><code>filech${ch}_0</code></td><td style="padding:5px 10px;font-size:21px;">ФАЙЛ 1</td><td style="padding:5px 0 5px 10px;font-size:21px;">Обычное сохранение</td></tr>
                 <tr style="border-bottom:1px solid var(--border);"><td style="padding:5px 10px 5px 0;font-size:16px;"><code>filech${ch}_1</code></td><td style="padding:5px 10px;font-size:21px;">ФАЙЛ 2</td><td style="padding:5px 0 5px 10px;font-size:21px;">Обычное сохранение</td></tr>
@@ -581,6 +894,10 @@
                 <tr style="border-bottom:1px solid var(--border);"><td style="padding:5px 10px 5px 0;font-size:16px;"><code>filech${ch}_5</code></td><td style="padding:5px 10px;font-size:21px;">ФАЙЛ 3</td><td style="padding:5px 0 5px 10px;font-size:21px;">ФАЙЛ завершён</td></tr>
                 <tr style="border-bottom:1px solid var(--border);"><td style="padding:5px 10px 5px 0;font-size:16px;"><code>filech${ch}_9</code></td><td style="padding:5px 10px;font-size:21px;">—</td><td style="padding:5px 0 5px 10px;font-size:21px;">Резервная копия</td></tr>
               `).join('')}
+              <tr><td colspan="3" style="padding:12px 0 2px;font-size:18px;"><u>Глава 5 — Weird Route (Side B)</u></td></tr>
+              <tr style="border-bottom:1px solid var(--border);"><td style="padding:5px 10px 5px 0;font-size:16px;"><code>filech5_3_b</code> … <code>filech5_5_b</code></td><td style="padding:5px 10px;font-size:21px;">ФАЙЛ 1–3</td><td style="padding:5px 0 5px 10px;font-size:21px;">Завершение Weird Route (отдельно от обычных, суффикс <code>_b</code>)</td></tr>
+              <tr style="border-bottom:1px solid var(--border);"><td style="padding:5px 10px 5px 0;font-size:16px;"><code>filech5_9_b</code></td><td style="padding:5px 10px;font-size:21px;">—</td><td style="padding:5px 0 5px 10px;font-size:21px;">Резервная копия Weird Route</td></tr>
+              <tr><td colspan="3" style="padding:6px 0 10px;font-size:14px;color:var(--text-3);">Плюс в общий <code>dr.ini</code> пишется <code>[side_b] complete=1</code> — глобальная отметка прохождения Weird Route (не привязана к файлу). Редактор её не меняет.</td></tr>
             </tbody>
           </table>
         </div>
@@ -613,7 +930,7 @@
         </ul>
       </article>
       <article class="card" style="margin-top:16px;"><h2>Совместимость</h2>
-        <p class="helper">Редактор поддерживает файлы DELTARUNE Глав 1–4 для следующих платформ:</p>
+        <p class="helper">Редактор поддерживает файлы DELTARUNE Глав 1–5 для следующих платформ:</p>
         <ul class="bullet-list">
           <li><b>PC (Windows)</b></li>
           <li><b>Mac</b></li>
@@ -631,7 +948,7 @@
       <h2>Какой файл за что отвечает</h2>
       <p class="helper">Файлы сохранений в папке DELTARUNE записываются в формате <span class="highlight">filech<code>[N]</code>_<code>[S]</code></span>, где:</p>
       <ul class="bullet-list">
-        <li><code>[N]</code> — номер главы (1–4);</li>
+        <li><code>[N]</code> — номер главы (1–5);</li>
         <li><code>[S]</code> — статус сохранения (0–5, 9).</li>
       </ul>
       <p class="helper", style="margin-top:20px;">Статус файла сохранения <code>[S]</code> определяется следующим образом:</p>
@@ -661,17 +978,20 @@
   }
 
   const INFO_DOCS = {
-    chapter: ['Глава', 'Определяется так:<ol style="color:var(--text-2);"><li>Если файл загружен с именем <code>filechN_M</code> — глава берётся из имени (N). Самый надёжный способ.</li><li>Старый формат файла → всегда Глава 1.</li><li>Иначе по номеру комнаты: <code>≥40000</code> → Гл. 4, <code>30000–39999</code> → Гл. 3, <code>20000–29999</code> → Гл. 2.</li><li>Иначе — Глава 2.</li></ol><p style="margin-top:10px;color:var(--text-2)">Реальные сохранения отдельных глав хранят «сырой» индекс комнаты, поэтому по одному содержимому главу видно не всегда — надёжнее всего имя файла <code>filechN_M</code>.</p>'],
+    chapter: ['Глава', 'Определяется так:<ol style="color:var(--text-2);"><li>Если файл загружен с именем <code>filechN_M</code> — глава берётся из имени (N). Самый надёжный способ.</li><li>Старый формат файла → всегда Глава 1.</li><li>Иначе по номеру комнаты: <code>≥50000</code> → Гл. 5, <code>40000–49999</code> → Гл. 4, <code>30000–39999</code> → Гл. 3, <code>20000–29999</code> → Гл. 2.</li><li>Иначе — Глава 2.</li></ol><p style="margin-top:10px;color:var(--text-2)">Реальные сохранения отдельных глав хранят «сырой» индекс комнаты, поэтому по одному содержимому главу видно не всегда — надёжнее всего имя файла <code>filechN_M</code>.</p>'],
+    sideB: ['Маршрут Weird (Side B)', '<p style="color:var(--text-2)">Уникальная механика Главы 5: при завершении <b>Weird Route</b> игра сохраняет файл <u>отдельно</u> — с суффиксом <code>_b</code> на конце имени (напр. <code>filech5_4_b</code>, резервная копия <code>filech5_9_b</code>). Содержимое такого файла — обычное сохранение того же формата, отличается только имя файла.</p><p style="margin-top:10px;color:var(--text-2)">По коду (<code>scr_complete_save_file_b</code>): берётся слот завершения (ФАЙЛ+3), к имени добавляется <code>_b</code>, и в общий файл <code>dr.ini</code> пишется <code>[side_b] complete=1</code> — глобальная отметка «Weird Route пройден вообще» (не привязана к конкретному файлу).</p><p style="margin-top:10px;color:var(--yellow)">⚠ Если включить этот флажок, редактор сохранит файл с <code>_b</code>. <b>Не снимайте</b> его у файлов <code>_b</code> — иначе при скачивании перезапишете обычный файл завершения, а не Weird-Route-копию. Сам редактор НЕ трогает <code>dr.ini</code>.</p>'],
     startChapter: ['Стартовая глава', 'Глава, на которой был создан текущий файл сохранения. <b>0</b> — если файл создан на текущей главе (или прохождение всё ещё в Главе 1: первая глава этот флаг не трогает).<p class="helper" style="margin-top:10px;color:var(--text-2)">По коду: значение ставится один раз в меню сохранения при первом сохранении в главе ≥2 (<code>flag[914] = глава − 1</code>), в мире света показывается как «Since Chapter N». Поэтому файл, начатый в Главе 1, после сохранения в Главе 2 показывает <b>Глава 1</b> — это и есть «начат в Главе 1».</p>'],
     playerName: ['Имя игрока', 'Имя, введённое игроком в начале игры (truename). Отличается от имени СОСУДА.'],
-    money: ['Деньги (т$)', 'Тёмные доллары — валюта в мирах тьмы.'],
+    money: ['Тёмные доллары (D$)', 'Основная валюта миров тьмы — <code>global.gold</code>. Падает с врагов и лежит в сундуках; тратится в магазинах мира тьмы. В HUD Главы 5 рисуется как «D$».'],
+    flowerDollars: ['Цветочные доллары (F$)', 'Флаг 1411: валюта мира тьмы Главы 5 («Цветочные доллары»). Собирается монетками-цветами (<code>obj_climb_coin</code>/<code>obj_plat_coin</code>), тратится в кафе и магазинах замка. В HUD рисуется как «F$».<p class="helper" style="margin-top:8px;color:var(--text-2)">В Главах 1–4 обычно 0 (механика появилась в Главе 5).</p>'],
+    pinkDollars: ['Розовые монеты (Pink coins)', 'Флаг 1312: розовая валюта мира тьмы Главы 5. Собирается розовыми монетами, тратится в «розовом магазине» замка (<code>obj_dw_fcastle_pinkshop</code>). В HUD рисуется как «P$».<p class="helper" style="margin-top:8px;color:var(--text-2)">В Главах 1–4 обычно 0 (механика появилась в Главе 5).</p>'],
     points: ['Очки', 'Флаг 1044: валюта телешоу Тенны в Главе 3. В других главах обычно 0.'],
     playtime: ['Время игры', 'Сколько сыграно (хранится в кадрах, 30 кадров = 1 секунда).'],
     room: ['Текущая комната', 'ID комнаты, где находится персонаж.<p class="helper" style="margin-top:10px;color:var(--text-2)">В сохранениях отдельных глав это «сырой» индекс комнаты (небольшое число); название подставляется автоматически по главе.</p>'],
-    plot: ['Сюжетный счётчик (Plot)', '<p style="color:var(--text-2)"><b>Главный счётчик прогресса главы</b> — в коде игры это одна переменная <code>global.plot</code>. У каждой главы он свой и начинается с 0 (между главами не переносится).</p><p style="margin-top:10px;color:var(--text-2)"><b>Что он делает (по коду игры):</b> по всей главе раскиданы сотни проверок вида <code>global.plot &gt;= N</code>, и именно они решают:</p><ul class="bullet-list"><li>какие сцены/катсцены уже пройдены и что будет дальше;</li><li>где стоят и что говорят NPC (напр. реплики Короля включаются при <code>plot &gt;= 235</code>);</li><li>какие враги встречаются и насколько они сильны — <code>scr_monstersetup</code> смотрит на <code>plot</code> (напр. <code>plot &lt; 40</code>, <code>plot &lt; 150</code>);</li><li>что происходит при загрузке в комнате — <code>scr_load</code> сверяет комнату и <code>plot</code>.</li></ul><p style="margin-top:10px;color:var(--text-2)"><b>Как растёт:</b> ступеньками по ходу сюжета, почти всегда только вверх. Шаги НЕравномерные — например в конце это …, 235, 240, 249, 250, 251. Значения по коду игры:</p><ul class="bullet-list"><li>Глава 1: <b>0–251</b></li><li>Глава 2: <b>0–251</b></li><li>Глава 3: <b>0–350</b></li><li>Глава 4: <b>0–320</b> (основная концовка/титры ≈ <b>249–251</b>; значения выше — пост-титры и секретный контент)</li></ul><p style="margin-top:6px;color:var(--text-3)">Примечание: <code>plot = 999</code> в коде Главы 4 — служебное значение одной катсцены (легенда), к реальному прогрессу отношения не имеет.</p><p style="margin-top:10px;color:var(--yellow)"><b>⚠ Самое опасное поле.</b> Значение должно совпадать с текущей комнатой, флагами и составом отряда. Если поставить «чужое» число, игра может застрять (не пройти дальше), запустить сцену не в том месте, выставить не тех врагов или вылететь.</p><p style="margin-top:10px;color:var(--text-2)"><b>Совет:</b> не меняйте без необходимости. Если нужно «перемотать» сюжет — надёжнее загрузить подходящее сохранение, чем угадывать число. Перед любой правкой сделайте резервную копию.</p>'],
-    darkWorld: ['В мире тьмы', 'Игровой флаг: персонаж сейчас в мире тьмы.<p class="helper" style="margin-top:10px;color:var(--text-2)"><u>(В Мире света, если галочка не выбрана)</u>.</p>'],
+    plot: ['Сюжетный счётчик (Plot)', '<p style="color:var(--text-2)"><b>Главный счётчик прогресса главы</b> — в коде игры это одна переменная <code>global.plot</code>. У каждой главы он свой и начинается с 0 (между главами не переносится).</p><p style="margin-top:10px;color:var(--text-2)"><b>Что он делает (по коду игры):</b> по всей главе раскиданы сотни проверок вида <code>global.plot &gt;= N</code>, и именно они решают:</p><ul class="bullet-list"><li>какие сцены/катсцены уже пройдены и что будет дальше;</li><li>где стоят и что говорят NPC (напр. реплики Короля включаются при <code>plot &gt;= 235</code>);</li><li>какие враги встречаются и насколько они сильны — <code>scr_monstersetup</code> смотрит на <code>plot</code> (напр. <code>plot &lt; 40</code>, <code>plot &lt; 150</code>);</li><li>что происходит при загрузке в комнате — <code>scr_load</code> сверяет комнату и <code>plot</code>.</li></ul><p style="margin-top:10px;color:var(--text-2)"><b>Как растёт:</b> ступеньками по ходу сюжета, почти всегда только вверх. Шаги НЕравномерные — например в конце это …, 235, 240, 249, 250, 251. Значения по коду игры:</p><ul class="bullet-list"><li>Глава 1: <b>0–251</b></li><li>Глава 2: <b>0–211</b></li><li>Глава 3: <b>0–350</b></li><li>Глава 4: <b>0–320</b> (основная концовка/титры ≈ <b>249–251</b>; значения выше — пост-титры и секретный контент)</li><li>Глава 5: <b>0–590</b> (запечатывание источника ≈ <b>550–580</b>, титры = <b>590</b>)</li></ul><p style="margin-top:6px;color:var(--text-3)">Примечание: <code>plot = 999</code> в коде Главы 4 — служебное значение одной катсцены (легенда), к реальному прогрессу отношения не имеет. Названия этапов Глав 1–4 — устоявшиеся в сообществе; для Главы 5 названия выведены по коду игры (сцена/объект-установщик каждого значения).</p><p style="margin-top:10px;color:var(--yellow)"><b>⚠ Самое опасное поле.</b> Значение должно совпадать с текущей комнатой, флагами и составом отряда. Если поставить «чужое» число, игра может застрять (не пройти дальше), запустить сцену не в том месте, выставить не тех врагов или вылететь.</p><p style="margin-top:10px;color:var(--text-2)"><b>Совет:</b> не меняйте без необходимости. Если нужно «перемотать» сюжет — надёжнее загрузить подходящее сохранение, чем угадывать число. Перед любой правкой сделайте резервную копию.</p>'],
+    darkWorld: ['В мире тьмы', 'Игровой флаг: персонаж сейчас в мире тьмы.<p class="helper" style="margin-top:10px;color:var(--text-2)"><u>(В Мире света, если галочка не выбрана)</u>.</p><p class="helper" style="margin-top:10px;color:var(--yellow)">⚠ Обычно это состояние определяется комнатой автоматически. Менять его вручную имеет смысл, только если оно рассинхронизировалось с текущей комнатой; несоответствие (мир тьмы + светлая комната или наоборот) может привести к странному поведению при загрузке.</p>'],
     vesselName: ['Имя СОСУДА', 'Имя созданного в прологе СОСУДА.<p class="helper" style="margin-top:10px;color:var(--text-2)"><u>Пустое</u>, если игрок не проходил Главу 1.</p>'],
-    lv: ['УР (LV)', '<p style="color:var(--text-2)">В DELTARUNE «УР»/«LV» — это <b>не уровень в привычном смысле и не счётчик убийств</b>. В меню сохранения (Главы 2–4) рядом с «LV» рисуется <b>номер главы</b> (<code>global.chapter</code>); в Главе 1 рисуется само поле <code>global.lv</code>, но оно равно 1 — что совпадает с номером главы. Титулы мира тьмы «LV4 Dark Hero», «LV4 Moss Most», «LV4 Axe of Justice», «LV4 Dark Bead» — это <b>жёстко прописанные строки под главу</b> (условия выбирают лишь какой титул показать, само число «LV4» в коде литеральное и от <code>global.lv</code> не зависит). Поэтому даже на сейве, где все враги пощажены, всё равно «LV4».</p><p style="margin-top:10px;color:var(--text-2)">Само поле «Level» (<code>global.lv</code>) во всех 4 главах только задаётся <code>= 1</code> или читается из файла — <b>его ничто не повышает</b>, в обычной игре оно всегда 1. Настоящая «LOVE» — отдельное значение <code>global.llv</code> (в мире света показывается как «LV»); в обычной игре оно тоже остаётся 1.</p><p style="margin-top:10px;color:var(--text-3)">Проще говоря: «LV4» в титуле означает «Глава 4», а не уровень и не убийства.</p><p style="margin-top:10px;color:var(--text-3)">В этом редакторе титулы намеренно показывают НАСТОЯЩИЙ уровень (<code>global.lv</code>) — поэтому тут, например, «LV1 Moss Most», тогда как сама игра в этом месте косметически печатает номер главы.</p>'],
+    lv: ['УР (LV)', '<p style="color:var(--text-2)">В DELTARUNE «УР»/«LV» — это <b>не уровень в привычном смысле и не счётчик убийств</b>. В меню сохранения (Главы 2–4) рядом с «LV» рисуется <b>номер главы</b> (<code>global.chapter</code>); в Главе 1 рисуется само поле <code>global.lv</code>, но оно равно 1 — что совпадает с номером главы. Титулы мира тьмы «LV4 Dark Hero», «LV4 Moss Most», «LV4 Axe of Justice», «LV4 Dark Bead» — это <b>жёстко прописанные строки под главу</b> (условия выбирают лишь какой титул показать, само число «LV4» в коде литеральное и от <code>global.lv</code> не зависит). Поэтому даже на сейве, где все враги пощажены, всё равно «LV4».</p><p style="margin-top:10px;color:var(--text-2)">Само поле «Level» (<code>global.lv</code>) во всех 4 главах только задаётся <code>= 1</code> или читается из файла — <b>его ничто не повышает</b>, в обычной игре оно всегда 1. Настоящая «LOVE» — отдельное значение <code>global.llv</code> (в мире света показывается как «LV»); в обычной игре оно тоже остаётся 1.</p><p style="margin-top:10px;color:var(--text-3)">Проще говоря: «LV4» в титуле означает «Глава 4», а не уровень и не убийства.</p><p style="margin-top:10px;color:var(--text-3)">В этом редакторе титулы персонажей показывают «LV» = номер главы сейва (как в игре: Гл. 5 → «LV5», Гл. 4 → «LV4», Гл. 3 → «LV3» и т.д.) с соответствующим главе титулом, а не значение <code>global.lv</code>.</p>'],
     xp: ['Опыт (EXP)', '<p style="color:var(--text-2)">Очки опыта — <code>global.xp</code>. При победе в бою (в том числе за пощаду, ведь «You won» засчитывается и за неё) делается <code>global.xp += global.monsterexp</code>. Но <code>monsterexp</code> у всех врагов в игре равен <b>0</b> (обнуляется в <code>scr_monstersetup</code> и нигде не становится больше), поэтому за бой реально начисляется <b>0 опыта</b> — в сообщении боя так и пишется «Got 0 EXP».</p><p style="margin-top:10px;color:var(--text-2)">Опыт <b>не повышает уровень и не влияет на статы</b>: <code>global.lv</code> от <code>global.xp</code> не зависит вообще. Рост статов (макс. HP, атака, магия) даёт <code>scr_levelup</code> (есть в Главах 2–4, в Главе 1 его нет) — по <b>числу выигранных боёв</b> (счётчик-флаг: Гл.2 №65, Гл.3 №1248, Гл.4 №1580), а не по накопленному опыту. Хранится в файле сразу после денег, перед полем «Level».</p>'],
     saveName: ['Имя ФАЙЛА', 'Внутреннее имя сохранения в редакторе (для удобства, в файл игры не пишется).'],
     inGameSlot: ['Номер ФАЙЛА', 'Номер ячейки с сохранением в меню игры.<p class="helper" style="margin-top:10px;color:var(--text-2)">Ячейки 1–3 соответствуют следующим <u>игровым файлам</u>:<ul class="bullet-list"><li>ФАЙЛ 1: <code>filech<code2>[N]</code2>_<yellow>0</yellow></code> / <code>filech<code2>[N]</code2>_<yellow>3</yellow></code>;</li><li>ФАЙЛ 2: <code>filech<code2>[N]</code2>_<yellow>1</yellow></code> / <code>filech<code2>[N]</code2>_<yellow>4</yellow></code>;</li><li>ФАЙЛ 3: <code>filech<code2>[N]</code2>_<yellow>2</yellow></code> / <code>filech<code2>[N]</code2>_<yellow>5</yellow></code>.</li></ul>'],
@@ -697,7 +1017,7 @@
 
   function renderWelcome(slot) {
     const s = slot.save;
-    const chNames = { 1: '', 2: "A Cyber's World", 3: 'Late Night', 4: 'Prophecy' };
+    const chNames = { 1: '', 2: "A Cyber's World", 3: 'Late Night', 4: 'Prophecy', 5: '' };
     const chDisplay = `${s.meta.chapter}${chNames[s.meta.chapter] ? '   ' + chNames[s.meta.chapter] : ''}`;
     const lbl = (text, key) => `<span style="display:flex;align-items:center;gap:5px;">${esc(text)}${key ? infoHint(key) : ''}</span>`;
     const fld = (text, key, path, value, type, attrs) => `<label class="field">${lbl(text, key)}<input data-path="${esc(path)}" type="${type || 'text'}" ${attrs || ''} value="${esc(value)}"></label>`;
@@ -708,29 +1028,38 @@
     const slotOpts = [0, 1, 2].map((n) => `<option value="${n}"${Number(s.meta.slot) === n ? ' selected' : ''}>ФАЙЛ ${n + 1}</option>`).join('');
 
     return `
+      ${dogWarningBanner(s)}
       ${editorPurposeCard()}
       <article class="card accent-red"><h2>Общее</h2>
         <div class="grid three" style="margin-top:14px; ">
           ${roBox('Глава', 'chapter', chDisplay)}
-          ${fld('Деньги (т$)', 'money', 'money', s.money, 'number', 'min="0"')}
           ${selFld('Текущая комната', 'room', 'room', roomOptions(s.room, s.meta.chapter))}
-
           ${selFld('Стартовая глава', 'startChapter', 'flags.914', scOpts)}
-          ${fld('Очки', 'points', 'flags.1044', s.flags[1044] || 0, 'number', 'min="0"')}
-          ${fld('Сюжетный счётчик', 'plot', 'plot', s.plot, 'number', 'min="0"')}
 
+          <label class="field">${lbl('Сюжетный счётчик', 'plot')}<select data-path="plot">${plotOptions(s.meta.chapter, s.plot)}</select><div id="plotLabel" class="plot-label-wrap">${plotLabelHTML(s.meta.chapter, s.plot)}</div></label>
           ${fld('Имя игрока', 'playerName', 'playerName', s.playerName)}
-          ${fld('Время (в кадрах)', 'playtime', 'time', s.time, 'number', 'min="0"')}
-          ${chkFld('Сейчас в мире тьмы (определяется автоматически)', 'darkWorld', 'inDarkWorld', s.inDarkWorld, true)}
-
           ${fld('Имя СОСУДА', 'vesselName', 'vesselName', s.vesselName)}
+
           ${fld('УР', 'lv', 'lv', s.lv, 'number', 'min="1"')}
           ${fld('Опыт', 'xp', 'xp', s.xp, 'number', 'min="0"')}
+          ${fld('Время (в кадрах)', 'playtime', 'time', s.time, 'number', 'min="0"')}
+
+          ${chkFld('Сейчас в мире тьмы', 'darkWorld', 'inDarkWorld', s.inDarkWorld, false)}
           ${selFld('Номер ФАЙЛА', 'inGameSlot', 'meta.slot', slotOpts)}
-          ${chkFld('Завершённое сохранение (определяется автоматически)', 'completion', 'meta.isCompletionSave', s.meta.isCompletionSave, true)}
+          ${chkFld('Завершённое сохранение', 'completion', 'meta.isCompletionSave', s.meta.isCompletionSave, false)}
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:center;margin-top:18px;">
           <button class="btn" type="button" data-action="open-file-naming" style="font-size:27px;color:var(--text-2)">Список всех имён файлов</button>
+        </div>
+      </article>
+
+      <article class="card accent-noelle"><h2>Валюты</h2>
+        <p class="helper" style="margin-top:8px;">Все денежные значения прохождения в одном месте. Тёмные доллары хранятся отдельным полем сохранения, остальные валюты — во флагах.</p>
+        <div class="grid three" style="margin-top:14px;">
+          ${fld('Тёмные доллары (D$)', 'money', 'money', s.money, 'number', 'min="0"')}
+          ${fld('Цветочные доллары (F$)', 'flowerDollars', 'flags.1411', s.flags[1411] || 0, 'number', 'min="0"')}
+          ${fld('Розовые монеты (Pink coins)', 'pinkDollars', 'flags.1312', s.flags[1312] || 0, 'number', 'min="0"')}
+          ${fld('Очки', 'points', 'flags.1044', s.flags[1044] || 0, 'number', 'min="0"')}
         </div>
       </article>
 
@@ -852,101 +1181,26 @@
           <div style="margin-top:14px;text-align:left;">${`<label class="field"><span>Персонаж</span><select data-path="party.${slot}">${opts}</select></label>`}</div>
         </article>`;
       };
-      return `${subtabsHTML(tabs, active, 'party')}
+      return `
+        <article class="card accent-kris" style="margin-bottom:16px;">
+          <p class="helper" style="margin:6px 0 12px;">Чтобы запустить интерактивное меню, нажмите по нему, после чего появится возможность изменения вашей экипировки, магии и предметов команды.</p>
+          <div id="equip-menu-mount"></div>
+        </article>
         <article class="card" style="margin-bottom:16px;">
-          <div class="grid two" style="align-items:end;">
-            <label class="field"><span>Деньги (т$)</span><input data-path="money" type="number" min="0" value="${esc(s.money)}"></label>
-            <label class="check-row" style="padding:6px 10px;"><input type="checkbox" data-toggle="allowNonStandardParty"${allowNon ? ' checked' : ''}><span>Нестандартный состав команды</span></label>
-          </div>
+          <label class="check-row" style="padding:6px 10px;"><input type="checkbox" data-toggle="allowNonStandardParty"${allowNon ? ' checked' : ''}><span>Нестандартный состав команды</span></label>
           <p class="helper" style="margin:6px 0 0;">«Нестандартный состав» позволяет ставить любого персонажа в любой файл. Игра обычно не рассчитана на такие сочетания — это может приводить к вылетам.</p>
         </article>
         <div class="grid three">${[0, 1, 2].map(slotCard).join('')}</div>
         <article class="card" style="margin-top:16px;"><h3>Подсказка</h3><p class="helper">Файл 1 — лидер (Крис). Остальные файлы — спутники.</p></article>`;
     }
-
-    const ci = { kris:1, susie:2, ralsei:3, noelle:4 }[active] ?? 1;
-    const c = s.characters[ci] || {};
-    const spells = c.spells || [];
-    const Chars = window.KnightChars;
-    const showAll = state.showAllEquip;
-
-    const equipSelect = (path, label, kind, value) => {
-      const ru = ruMapFor(kind);
-      const full = Core.DATA[kind] || [];
-      let list = (!showAll && Chars) ? full.filter(([v]) => Chars.isAllowed(ci, kind, v)) : full;
-      if (!list.some(([v]) => Number(v)===Number(value))) list = [[value, `#${value}`], ...list];
-      const opts = list.map(([v,lbl]) => { const rn = ru?ru[Number(v)]:null; const d = rn?`${rn} — ${lbl}`:lbl; return `<option value="${v}"${Number(v)===Number(value)?' selected':''}>${esc(d)} (${v})</option>`; }).join('');
-      const bad = availBad(kind, Number(value), s.meta.chapter);
-      const warnHtml = bad ? ` <span class="avail-warn" title="${esc(availWarnText(bad))}">⚠ Гл. ${bad}+</span>` : '';
-      return `<label class="field"><span>${esc(label)}${warnHtml}</span><select data-path="${esc(path)}">${opts}</select></label>`;
-    };
-    const title = Chars ? Chars.computeTitle(ci, s) : null;
-    return `${subtabsHTML(tabs, active, 'party')}
-      <article class="card ${PARTY_ACCENT[active]||''}">
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:6px;">
-          <div>
-            <h2>${characterName(ci)}</h2>
-            ${title ? `<p class="sub" style="margin:2px 0 0;color:var(--yellow)">LV${title.lv} ${esc(title.name)} <span style="color:var(--text-3)">— ${esc(title.desc)}</span></p>` : ''}
-            <p class="sub" style="margin:2px 0 0">Индекс персонажа: ${ci}</p>
-          </div>
-          <div class="inline-tools">
-            <button class="btn small" data-action="heal" data-character="${ci}" type="button">Полное HP</button>
-            <button class="btn small" data-action="max-stats" data-character="${ci}" type="button">Макс статы</button>
-          </div>
-        </div>
-        <hr class="divider">
-        <h3>Характеристики</h3>
-        <div class="grid three" style="margin:10px 0 16px;">
-          ${field(`characters.${ci}.health`,'HP', c.health,'number','min="0"')}
-          ${field(`characters.${ci}.maxHealth`,'Max HP', c.maxHealth,'number','min="1"')}
-          ${field(`characters.${ci}.attack`,'Атака', c.attack,'number')}
-          ${field(`characters.${ci}.defence`,'Защита', c.defence,'number')}
-          ${field(`characters.${ci}.magic`,'Магия', c.magic,'number')}
-          ${field(`characters.${ci}.guts`,'Guts', c.guts,'number')}
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
-          <h3>Экипировка</h3>
-          <label class="check-row" style="padding:6px 10px;"><input type="checkbox" data-toggle="showAllEquip"${showAll?' checked':''}><span>Показать всю экипировку (без ограничений персонажа)</span></label>
-        </div>
-        <div class="grid three" style="margin:10px 0 16px;">
-          ${equipSelect(`characters.${ci}.weapon`,'Оружие','weapons', c.weapon)}
-          ${equipSelect(`characters.${ci}.primaryArmor`,'Броня 1','armors', c.primaryArmor)}
-          ${equipSelect(`characters.${ci}.secondaryArmor`,'Броня 2','armors', c.secondaryArmor)}
-          ${field(`characters.${ci}.weaponStyle`,'Стиль оружия (Weapon Style)', c.weaponStyle, s.meta.format===1?'text':'number')}
-        </div>
-        <h3>Заклинания (6 файлов)</h3>
-        <div class="grid three" style="margin:10px 0 16px;">
-          ${spells.slice(0,6).map((v,i) => equipSelect(`characters.${ci}.spells.${i}`,`Файл ${i+1}`,'spells', v)).join('')}
-        </div>
-      </article>`;
   }
 
   function renderLightWorld(slot) {
-    const lw = slot.save.lightWorld;
-    return `<div class="grid two">
-      <article class="card accent-kris"><h2>Параметры Крис</h2><p class="sub">Статы в Мире света.</p>
-        <div class="grid two">
-          ${field('lightWorld.health','HP', lw.health,'number')}
-          ${field('lightWorld.maxHealth','Max HP', lw.maxHealth,'number')}
-          ${field('lightWorld.level','Уровень', lw.level,'number','min="1"')}
-          ${field('lightWorld.experience','Опыт', lw.experience,'number')}
-          ${field('lightWorld.money','Деньги ($)', lw.money,'number')}
-          ${field('lightWorld.attack','Атака', lw.attack,'number')}
-          ${field('lightWorld.defence','Защита', lw.defence,'number')}
-          ${field('lightWorld.weaponStrength','Сила оружия', lw.weaponStrength,'number')}
-        </div>
-        <div class="grid two" style="margin-top:6px;">
-          ${selectField('lightWorld.weapon','Оружие','lightItems', lw.weapon)}
-          ${selectField('lightWorld.armor','Броня','lightItems', lw.armor)}
-        </div>
-      </article>
-      <article class="card accent-noelle"><h2>Предметы и телефон</h2><p class="sub">Инвентарь Мира света (8 файлов).</p>
-        <h3>Предметы</h3>
-        <div class="grid two" style="margin:10px 0 14px;">${lw.items.map((v,i) => selectField(`lightWorld.items.${i}`,`Предмет ${i+1}`,'lightItems', v)).join('')}</div>
-        <h3>Телефон</h3>
-        <div class="grid two" style="margin-top:10px;">${lw.phone.map((v,i) => selectField(`lightWorld.phone.${i}`,`Контакт ${i+1}`,'phone', v)).join('')}</div>
-      </article>
-    </div>`;
+    return `
+      <article class="card accent-noelle" style="margin-bottom:16px;">
+        <p class="helper" style="margin:6px 0 12px;">Для взаимодействия с интерактивным меню, кликните по нему.</p>
+        <div id="light-menu-mount"></div>
+      </article>`;
   }
 
   const PART_MAX = { 900: 7, 901: 5, 902: 4 };
@@ -1056,11 +1310,167 @@
     </div>`;
   }
 
+  const SUSIEFIT = [
+    { flag:1421, part:'HAIR', frames:6, opts:[
+      { n:'Normal',      d:"-Normal-\nYour everyday\nSusie. Can't\ndeny the\nclassics." },
+      { n:'Ponytail',    d:'-Ponytail-\nA horse tail\ncould appeal\nto\nungulates?' },
+      { n:'Royal Bob',   d:'-Royal Bob-\nHas a needle\nthat could\ndouble as a\nweapon.' },
+      { n:'Duck Tiara',  d:'-Duck Tiara-\nThis outfit\nsucks. You\nare going to\nlose points.' },
+      { n:'Fresh Swish', d:'-Fresh Swish-\nWhip your\nhair around\nto cut grass\nor beat foes.' },
+      { n:'Princey',     d:'-Princey-\nSeen in the\nboys role of\nTakarabazooka.' },
+    ]},
+    { flag:1422, part:'SHIRT', frames:8, opts:[
+      { n:'Dark Jacket',  d:'-Dark Jacket-\nIncreases\naptitude\ntowards\naxe and gun.' },
+      { n:'Rip Jacket',   d:'-Rip Jacket-\nHigh quality\njacket, with\nhigh quality\nrips.' },
+      { n:'Similar Hood', d:'-Similar Hood-\nSports could\nbe committed\nin a cool\nclimate.' },
+      { n:'Duck',         d:'-Duck-\nThis outfit\nsucks. You\nare going to\nlose points.' },
+      { n:'Lancer Shirt', d:'-Lancer Shirt-\nA shirt that\nprotects\nagainst\nLancers.' },
+      { n:'Royal Dress',  d:'-Royal Dress-\nThe pinnacle\nof elegance,\nyou will look\nnormal\ngood.' },
+      { n:'Swag Jacket',  d:'-Swag Jacket-\nThe King of\ncasual\nfashion,\nare you ready?' },
+      { n:'Tuxusie',      d:'-Tuxusie-\nPart of her\nrarely seen\nFormal Form.' },
+    ]},
+    { flag:1423, part:'PANT', frames:7, opts:[
+      { n:'SusiePant',   d:'-SusiePant-\nTrousers with\nlarge pocket\nto hold\nmultiple gun.' },
+      { n:'Shorter',     d:'-Shorter-\nExpose ankle\nto elements\nto make it\nstronger.' },
+      { n:'Bagi',        d:'-Bagi-\nMighty nature\ncannot fell\nthe casual\nloose thread.' },
+      { n:'Duck',        d:'-Duck-\nThis outfit\nsucks. You\nare going to\nlose points.' },
+      { n:'White Pant',  d:'-White Pant-\nBut what if\nyou spill\nsomething\nwhen eating.' },
+      { n:'Gray Pants',  d:'-Gray Pants-\nSafe if you\nspill gray\nfood.' },
+      { n:'Blackpants2', d:"-Blackpants2-\nRalsei's\nlost fur will\nstand out." },
+    ]},
+    { flag:1424, part:'HAT', frames:5, opts:[
+      { n:'No Hat',     d:'-No Hat-\nLittle swag,\nbut easier\nto fire a\ngun.' },
+      { n:'Casual Hat', d:'-Casual Hat-\nAppearance\nof enjoying\nthe sport\nor sports.' },
+      { n:'Second Hat', d:'-Second Hat-\nSomeone put\nin the same\nhat twice.' },
+      { n:'Tiara',      d:'-Tiara-\nA princesses\nappearance\ngives a royal\ntreatment.' },
+      { n:'Silk',       d:'-Silk-\nNamed from a\nsong mix of\nsoda + milk.' },
+    ]},
+    { flag:1425, part:'SHO', frames:7, opts:[
+      { n:'Susie Shoesy', d:'-Susie Shoesy-\nAlready\nbroken in,\neasier to\nrun and gun.' },
+      { n:'Brown Leg',    d:"-Brown Leg-\nIt's a\nshoes\nused for\nbrown." },
+      { n:'Black Flats',  d:'-Black Flats-\nIt will cool\nyour ankles\nwith the\nlow coverage.' },
+      { n:'Duck',         d:'-Duck-\nThis outfit\nsucks. You\nare going to\nlose points.' },
+      { n:'Glass Shoes',  d:'-Glass Shoes-\nRalsei might\nturn back to\na pumpkin\nor mouse.' },
+      { n:'Brown Shoe',   d:'-Brown Shoe-\nA shoe made\nof a sturdy\nbrown, like\ndirt.' },
+      { n:'Blackshoes3',  d:'-Blackshoes3-\nMaybe there\nwas only 2.' },
+    ]},
+  ];
+  const SUSIEFIT_STATS = {
+    1421: [[5],[1,2],[0,2],[],[3,4],[0]],
+    1422: [[5],[1,3],[3,4],[],[2,4],[0,2],[1,4],[0]],
+    1423: [[5],[1,4],[1,3],[],[0,2],[2,4],[0]],
+    1424: [[5],[1,4],[4,3],[0,2],[0]],
+    1425: [[5],[1,3],[1,4],[],[0,2],[3,4],[0]],
+  };
+  const SUSIEFIT_STATCOLOR = ['#80ff80','#ffff80','#ff99ff','#ff4d4d','#8080ff','#b366b3'];
+  function sfFrame(v, n) { v = Number(v) || 0; return (v >= 0 && v < n) ? v : 0; }
+  function sfVal(save, flag) { const p = SUSIEFIT.find(x => x.flag === flag); return sfFrame(save.flags[flag], p.frames); }
+  function susieFitStars(save, statIdx) {
+    let n = 0;
+    for (const p of SUSIEFIT) { const arr = SUSIEFIT_STATS[p.flag][sfVal(save, p.flag)] || []; n += arr.filter(x => x === statIdx).length; }
+    return n;
+  }
+  function sfTint(src, w, h, color) {
+    const fid = 'sff' + (_tmFid++);
+    return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="image-rendering:pixelated;display:block"><defs><filter id="${fid}" color-interpolation-filters="sRGB"><feFlood flood-color="${color}" result="f"/><feComposite in="f" in2="SourceGraphic" operator="in"/></filter></defs><image href="game-sprites/susiefit/${src}" width="${w}" height="${h}" filter="url(#${fid})"/></svg>`;
+  }
+  function susieFitSprite(save, S) {
+    const W = 33 * S, H = 51 * S;
+    const layer = (key, frame, z, top, h) => `<img src="game-sprites/susiefit/${key}_${frame}.png" style="position:absolute;left:0;top:${top}px;width:${W}px;height:${h}px;z-index:${z};image-rendering:pixelated" alt="" onerror="this.style.display='none'">`;
+    return `<div class="tf-susie" style="width:${W}px;height:${H}px;">
+      ${layer('feet', sfVal(save,1425), 1, 0, H)}
+      ${layer('pants', sfVal(save,1423), 2, 0, H)}
+      ${layer('shirt', sfVal(save,1422), 3, 0, H)}
+      ${layer('hair', sfVal(save,1421), 4, 0, H)}
+      ${layer('hat', sfVal(save,1424), 5, -5 * S, 56 * S)}
+    </div>`;
+  }
+  function susieFitIsDuck(save) { return [1421,1422,1423,1425].every(f => sfVal(save, f) === 3); }
+  function sfRow(save, flag, label, x, y, focused, rightCol, scrolling) {
+    const v = sfVal(save, flag);
+    const valX = x + (rightCol ? 128 : 150);
+    const edit = (focused && scrolling) ? ' edit' : '';
+    const heart = focused ? `<img class="tf-heart" src="game-sprites/spr_heart_0.png" alt="" style="left:${x + 32}px;top:${y + 6}px">` : '';
+    return `${heart}
+      <button class="tf-opt${focused ? ' foc' : ''}" type="button" data-sffocus="${flag}" style="left:${x + 56}px;top:${y}px">${esc(label)}</button>
+      <button class="tf-arrow${edit}" type="button" data-sfarrow="${flag}" data-dir="-1" style="left:${valX - 22}px;top:${y + 3}px" aria-label="назад"><img src="game-sprites/susiefit/arrow_left.png" alt=""></button>
+      <span class="tf-val${edit}" style="left:${valX}px;top:${y}px">0${v}</span>
+      <button class="tf-arrow${edit}" type="button" data-sfarrow="${flag}" data-dir="1" style="left:${valX + 24}px;top:${y + 3}px" aria-label="вперёд"><img src="game-sprites/susiefit/arrow_right.png" alt=""></button>`;
+  }
+  const SUSIEFIT_GRID = [[1421, 1422, 1423], [1424, 1425, 'end']];
+  function susieFitCreator(save) {
+    const valid = [1421, 1422, 1423, 1424, 1425, 'end'];
+    const focus = valid.includes(state.sfFocus) ? state.sfFocus : 1421;
+    const scrolling = !!state.sfScroll && focus !== 'end';
+    const S = 2;
+    let rows = '';
+    [SUSIEFIT[0], SUSIEFIT[1], SUSIEFIT[2]].forEach((p, i) => { rows += sfRow(save, p.flag, p.part, 22, 306 + i * 42, focus === p.flag, false, scrolling); });
+    [SUSIEFIT[3], SUSIEFIT[4]].forEach((p, i) => { rows += sfRow(save, p.flag, p.part, 210, 306 + i * 42, focus === p.flag, true, scrolling); });
+    const endFoc = focus === 'end';
+    const endY = 306 + 2 * 42;
+    const endHeart = endFoc ? `<img class="tf-heart" src="game-sprites/spr_heart_0.png" alt="" style="left:${210 + 32}px;top:${endY + 6}px">` : '';
+    rows += `${endHeart}<button class="tf-opt${endFoc ? ' foc' : ''}" type="button" data-sffocus="end" style="left:${210 + 56}px;top:${endY}px">END</button>`;
+    let stats = '';
+    for (let i = 0; i < 6; i++) {
+      stats += `<span class="tf-stat" style="left:410px;top:${104 + 26 * i}px">${sfTint('stat_' + i + '.png', 58, 18, SUSIEFIT_STATCOLOR[i])}</span>`;
+      const cnt = susieFitStars(save, i);
+      for (let j = 0; j < cnt; j++) stats += `<span class="tf-star" style="left:${480 + j * 22}px;top:${104 + 26 * i}px">${sfTint('star.png', 18, 18, SUSIEFIT_STATCOLOR[i])}</span>`;
+    }
+    let desc;
+    if (focus === 'end') desc = 'END\n\nЗакончить примерку.\nВыбор уже сохранён\nв флаги 1421–1425.';
+    else { const fp = SUSIEFIT.find(p => p.flag === focus); desc = fp.opts[sfVal(save, focus)].d; }
+    const duck = susieFitIsDuck(save) ? '<div class="tf-duck">«This outfit sucks ass.»</div>' : '';
+    const hint = 'WASD / стрелки — выбор · E / Z / Enter — ок · Q / C — отмена';
+    return `<div class="tf-wrap"><div class="tf-screen" tabindex="0">
+      <img class="tf-header" src="game-sprites/susiefit/header.png" alt="Outfit to thrash your date's ass" style="left:${320 - 207}px;top:30px">
+      <div class="tf-stage" style="left:${300 - 33 * S / 2}px;top:150px">${susieFitSprite(save, S)}</div>
+      ${rows}
+      ${stats}
+      <div class="tf-desc" style="left:392px;top:296px">${esc(desc)}</div>
+      ${duck}
+      <div class="tf-hint">${esc(hint)}</div>
+    </div></div>`;
+  }
+
+  function bitmaskValue(value, bit, width) {
+    const mask = (1 << (width || 1)) - 1;
+    return (Number(value || 0) >> bit) & mask;
+  }
+
+  function bitmaskControlHTML(index, value, doc, inline) {
+    const bits = Array.isArray(doc && doc.bits) ? doc.bits : [];
+    if (!bits.length) return '';
+    const full = bits.reduce((acc, b) => acc | (((1 << (Number(b.width) || 1)) - 1) << Number(b.bit)), 0);
+    let upto = 0;
+    let setCount = 0;
+    const bitRows = bits.map((b) => {
+      const bit = Number(b.bit); const width = Number(b.width) || 1;
+      upto |= (((1 << width) - 1) << bit);
+      const cur = bitmaskValue(value, bit, width);
+      const checked = cur !== 0;
+      if (checked) setCount += 1;
+      const label = b.label || `bit ${bit}`;
+      const title = width > 1 ? `Биты ${bit}-${bit + width - 1}` : `Бит ${bit}`;
+      if (width > 1) {
+        const max = (1 << width) - 1;
+        const opts = Array.from({ length: max + 1 }, (_, v) => `<option value="${v}"${v === cur ? ' selected' : ''}>${v}</option>`).join('');
+        return `<div class="bit-row bit-row-wide${checked ? ' on' : ''}" title="${esc(title)}"><span class="bit-num">${bit}-${bit + width - 1}</span><span class="bit-lbl">${esc(label)}</span><select data-flagbits="${index}" data-bit="${bit}" data-width="${width}">${opts}</select><button class="btn small" type="button" data-flagbits-upto="${index}" data-mask="${upto}" title="Взвести все биты до этого включительно">◄</button></div>`;
+      }
+      return `<div class="bit-row${checked ? ' on' : ''}" title="${esc(title)}"><label><input type="checkbox" data-flagbit="${index}" data-bit="${bit}"${checked ? ' checked' : ''}><span class="bit-num">#${bit}</span><span class="bit-lbl">${esc(label)}</span></label><button class="btn small" type="button" data-flagbits-upto="${index}" data-mask="${upto}" title="Взвести все биты до этого включительно">◄</button></div>`;
+    }).join('');
+    return `<div class="bitmask-editor${inline ? ' compact' : ''}">
+      <div class="bitmask-head"><span class="bm-count">Включено <b>${setCount}</b> из ${bits.length} · значение ${esc(value || 0)}</span><span><button class="btn small" type="button" data-flagbits-all="${index}" data-mask="${full}">Все</button> <button class="btn small" type="button" data-flagbits-clear="${index}">Сброс</button></span></div>
+      <details class="bitmask-details"${inline ? '' : ' open'}><summary>Показать/скрыть отдельные биты (${bits.length})</summary><div class="bitmask-note">Это <b>набор независимых битов</b>-маркеров (комнаты, объекты, монеты, счётчики прогресса), а не один выбор. Любую комбинацию можно ставить одновременно — невозможных сочетаний нет; все биты = всё в зоне собрано/пройдено.</div><div class="bit-grid">${bitRows}</div></details>
+    </div>`;
+  }
+
   function momentField(index, save) {
     const doc = flagDoc(index); const value = save.flags[index] || 0; const name = flagName(index);
     const keys = doc && doc.values ? Object.keys(doc.values).map(Number).sort((a,b)=>a-b) : null;
     let control;
-    if (keys && keys.length === 2 && keys[0] === 0 && keys[1] === 1) {
+    if (doc && doc.bits) {
+      control = `<label class="field"><span>${esc(name)} <span style="color:var(--text-3)">#${index}</span></span><span class="flag-value-readonly">Текущее значение: ${esc(flagNumberDisplay(index, value))}</span></label>${bitmaskControlHTML(index, value, doc, false)}`;
+    } else if (keys && keys.length === 2 && keys[0] === 0 && keys[1] === 1) {
       control = `<label class="check-row"><input type="checkbox" data-path="flags.${index}"${Number(value)===1?' checked':''}><span>${esc(name)} <span style="color:var(--text-3)">#${index}</span></span></label>`;
     } else if (doc && doc.values) {
       const has = keys.some(k => k === Number(value));
@@ -1076,23 +1486,137 @@
           if (nums.length) { const m = Math.max(...nums); if (m > 0) effMax = m; }
         }
       }
-      const min = doc && doc.min !== undefined ? ` min="${doc.min}"` : '';
-      const max = effMax !== null ? ` max="${effMax}"` : '';
+      const min = doc && doc.min !== undefined ? flagNumberAttr(index, 'min', doc.min) : '';
+      const max = effMax !== null ? flagNumberAttr(index, 'max', effMax) : '';
       const maxBtn = effMax !== null ? ` <button class="btn small" type="button" data-flagmax="${index}" data-maxval="${effMax}" title="Поставить максимум (из кода игры)">Макс.</button>` : '';
-      control = `<label class="field"><span>${esc(name)} <span style="color:var(--text-3)">#${index}</span></span><span style="display:inline-flex;gap:6px;align-items:center;"><input type="number" data-path="flags.${index}" value="${esc(value)}"${min}${max}>${maxBtn}</span></label>`;
+      control = `<label class="field"><span>${esc(name)} <span style="color:var(--text-3)">#${index}</span></span><span class="numwrap"><input type="number" data-path="flags.${index}" value="${esc(flagNumberDisplay(index, value))}"${min}${max}${flagNumberExtra(index)}>${flagNumberSuffix(index)}${maxBtn}</span></label>`;
     }
     return `<div class="moment"><div class="moment-field">${control}</div>${hintBtn(index)}</div>`;
   }
 
-  const STORY_SECTION_TITLES = { darkWorld: 'Мир тьмы', lightWorld: 'Мир света', onion: 'Лук (Onion)', gameshow: 'Телешоу Тенны' };
+  const STORY_SECTION_TITLES = { vessel: 'СОСУД (Vessel)', thrashMachine: 'Взбучкотрон', darkWorld: 'Мир тьмы', lightWorld: 'Мир света', onion: 'Лук (Onion)', gameshow: 'Телешоу Тенны' };
+
+  const MENU_FLAG_LOC = {};
+  [900,901,902,903,904,905,906,907,908,909].forEach(i => { MENU_FLAG_LOC[i] = 'Гл. 1: СОСУД (меню-конструктор)'; });
+  [220,221,222,223,224,225].forEach(i => { MENU_FLAG_LOC[i] = 'Гл. 1: Взбучкотрон (меню-конструктор)'; });
+  [1421,1422,1423,1424,1425].forEach(i => { MENU_FLAG_LOC[i] = 'Гл. 5: Наряд Сьюзи (меню-конструктор)'; });
+  function flagStoryLocations(index) {
+    if (MENU_FLAG_LOC[index]) return [MENU_FLAG_LOC[index]];
+    if (flagName(index).startsWith('RECRUIT_')) return ['Раздел «В отряде»'];
+    const out = [];
+    const M = window.KnightProgressMap || {};
+    for (const chapter of [1, 2, 3, 4, 5]) {
+      for (const sec of (M[chapter] || [])) {
+        const cs = sec.clusters || [{ title: '', flags: sec.flags }];
+        for (const c of cs) {
+          if (Array.isArray(c.flags) && c.flags.includes(index)) out.push(`Гл. ${chapter}: ${sec.title}${c.title ? ' → ' + c.title : ''}`);
+        }
+      }
+    }
+    return [...new Set(out)];
+  }
+
+  function flagPersistChapters(index) {
+    return (I18n.FLAG_CATEGORIES || [])
+      .map(([key, , indices]) => {
+        const m = /^persist(\d+)$/.exec(key);
+        return m && Array.isArray(indices) && indices.includes(index) ? Number(m[1]) : null;
+      })
+      .filter(Boolean);
+  }
+
+  function flagSectionCellHTML(i) {
+    const story = flagStoryLocations(i);
+    const persist = flagPersistChapters(i);
+    const storyText = story.length ? `Сюжет: ${story.join('; ')}` : 'Сюжет: нет';
+    const persistText = persist.length ? `Сохранённый выбор: ${persist.map(ch => `Гл. ${ch}`).join(', ')}` : 'Сохранённый выбор: нет';
+    return `<span class="flag-desc">${esc(storyText)}</span><span class="flag-desc" style="display:block;margin-top:4px">${esc(persistText)}</span>`;
+  }
+
+  function flagHasMissingSection(i) {
+    return !flagStoryLocations(i).length || !flagPersistChapters(i).length;
+  }
+
+  const UNUSED_FLAGS = new Set([111, 125, 204, 208, 235, 267, 351, 361, 501, 588, 704, 705, 728, 783, 784, 785, 795, 1052, 1057, 1060, 1085, 1088, 1097, 1098, 1104, 1105, 1106, 1107, 1108, 1126, 1127, 1128, 1129, 1130, 1138, 1142, 1164, 1169, 1212, 1271, 1279, 1280, 1541, 1560]);
+  const RESERVE_FLAGS = new Set([0, 143, 144]);
+
+  function flagIsReserveIndex(i, slot) {
+    if (RESERVE_FLAGS.has(i)) return true;
+    return flagName(i) === `FLAG_${i}` && !flagDoc(i) && ((slot.save.flags[i] || 0) === 0);
+  }
+
+  function flagMatchesReserveFilters(i, slot) {
+    return !state.flagHideReserve || !flagIsReserveIndex(i, slot);
+  }
+
+  function flagMatchesUnusedFilters(i) {
+    const isUnused = UNUSED_FLAGS.has(i);
+    if (state.flagOnlyUnused) return isUnused;
+    if (state.flagHideUnused) return !isUnused;
+    return true;
+  }
+
+  function flagMatchesRecruitFilters(i) {
+    return !state.flagHideRecruits || !flagName(i).startsWith('RECRUIT_');
+  }
+
+  function categorizedFlagSet(max) {
+    const out = new Set();
+    const cats = I18n.FLAG_CATEGORIES || [];
+    const catKeys = new Set(cats.map(([key]) => key));
+    for (const [, , indices] of cats) {
+      if (!Array.isArray(indices)) continue;
+      indices.forEach(i => { if (i < max) out.add(i); });
+    }
+    const docs = I18n.FLAG_DOCS || {};
+    for (const k in docs) {
+      if (docs[k] && catKeys.has(docs[k].category)) {
+        const i = Number(k);
+        if (i < max) out.add(i);
+      }
+    }
+    return out;
+  }
+
+  function flagMatchesCategoryFilters(i, categorized) {
+    return !state.flagHideCategorized || !categorized.has(i);
+  }
+
+  function flagMatchesMissingFilters(i) {
+    const filtersOn = !!(state.flagMissingOnly || state.flagMissingStoryOnly || state.flagMissingPersistOnly);
+    if (!filtersOn) return true;
+    const storyMissing = !flagStoryLocations(i).length;
+    const persistMissing = !flagPersistChapters(i).length;
+    return (state.flagMissingOnly && (storyMissing || persistMissing))
+      || (state.flagMissingStoryOnly && storyMissing)
+      || (state.flagMissingPersistOnly && persistMissing);
+  }
+  function storyPersistFlags(ch) {
+    const cats = (I18n && I18n.FLAG_CATEGORIES) || [];
+    const row = cats.find((c) => c[0] === 'persist' + ch);
+    return row ? row[2].slice() : [];
+  }
+  function storyTheme(title) {
+    const t = title || '';
+    if (/Ритм|Тенн/i.test(t)) return 'st-tenna';
+    if (/Sword|Shadow Mantle/i.test(t)) return 'st-sword';
+    if (/Weird|Snowgrave/i.test(t)) return 'st-weird';
+    if (/Источник|финал/i.test(t)) return 'st-end';
+    if (/Бои|счётчик|телешоу|секрет/i.test(t)) return 'st-battle';
+    if (/Мир света/i.test(t)) return 'st-lw';
+    if (/Мир тьмы|Castle Town|Киберполе|Кибер-Сити|Особняк|Лес|Поле|Карточн|Замок|Сад|Обрыв|Dark Sanctuary|церков|Telemир|Телемир/i.test(t)) return 'st-dw';
+    return 'st-other';
+  }
+
   function renderStory(slot) {
     const s = slot.save; const chapter = s.meta.chapter;
-    const tabs = [['ch1','Глава 1'],['ch2','Глава 2'],['ch3','Глава 3'],['ch4','Глава 4']];
-    const active = state.subroute || `ch${Math.min(chapter,4)||1}`;
+    const tabs = [['ch1','Глава 1'],['ch2','Глава 2'],['ch3','Глава 3'],['ch4','Глава 4'],['ch5','Глава 5']];
+    const active = state.subroute || `ch${Math.min(chapter,5)||1}`;
     const ac = Number(active.replace('ch','')) || 1;
-    const sf = Core.STORY_FLAGS[ac] || {};
     const note = ac > chapter ? `<p class="helper" style="margin-bottom:14px;color:var(--yellow)">Сейчас загружено сохранение Главы ${chapter}. Флаги Главы ${ac} можно редактировать, но они вступят в силу только в этой главе.</p>` : '';
-    const moments = (arr) => `<div class="grid two" style="margin-top:12px;">${(arr||[]).map(i => momentField(i,s)).join('')}</div>`;
+    const shown = new Set();
+    const moment = (i) => { shown.add(Number(i)); return momentField(i, s); };
+    const grid = (arr) => `<div class="grid two" style="margin-top:12px;">${(arr||[]).map(moment).join('')}</div>`;
     let body = '';
 
     if (ac === 1) {
@@ -1101,17 +1625,39 @@
         <article class="card accent-susie"><h2 style="margin-bottom:12px;">Взбучкотрон</h2>${thrashCreator(s)}</article>
       </div>`;
     }
+    if (ac === 5) {
+      body += `<article class="card accent-susie"><h2 style="margin-bottom:4px;">Наряд Сьюзи</h2><p class="sub" style="margin-bottom:16px;">Да, да, а он запоминается, прикиньте?</p>${susieFitCreator(s)}</article>`;
+    }
 
-    const sp = (Core.STORY_PERSIST && Core.STORY_PERSIST[ac]) || {};
-    const ORDER = ['darkWorld', 'gameshow', 'onion', 'lightWorld'];
-    const keys = [...new Set([...Object.keys(sf), ...Object.keys(sp)])].filter((k) => k !== 'vessel' && k !== 'thrashMachine');
-    keys.sort((a, b) => { const ia = ORDER.indexOf(a), ib = ORDER.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib); });
-    keys.forEach((key) => {
-      const merged = [...new Set([...(sf[key] || []), ...(sp[key] || [])])];
-      if (!merged.length) return;
-      const title = STORY_SECTION_TITLES[key] || key;
-      body += `<article class="card" style="margin-top:16px;"><h2>${esc(title)} (Глава ${ac}) <span style="color:var(--text-3);font-size:15px;">— ${merged.length}</span></h2><p class="sub">Нажмите на лампочку рядом с флагом, чтобы увидеть, что меняется и какие диалоги появляются.</p>${moments(merged)}</article>`;
-    });
+    const SS = (window.KnightProgressMap && window.KnightProgressMap[ac]) || null;
+    if (SS && SS.length) {
+      body += `<div class="story-toolbar"><button class="btn small" type="button" data-action="story-expand">Развернуть всё</button><button class="btn small" type="button" data-action="story-collapse">Свернуть всё</button></div>`;
+      for (const sec of SS) {
+        let inner;
+        if (sec.clusters) inner = sec.clusters.map((c) => `<details class="story-cluster" open><summary><span class="sc-chev">▶</span><span class="sc-title">${esc(c.title)}</span><span class="sc-count">${c.flags.length}</span></summary><div class="story-cluster-body">${grid(c.flags)}</div></details>`).join('');
+        else inner = `<div class="story-cluster-body" style="padding:0;">${grid(sec.flags)}</div>`;
+        const cnt = sec.clusters ? sec.clusters.reduce((a,c)=>a+c.flags.length,0) : (sec.flags||[]).length;
+        body += `<details class="story-sec ${storyTheme(sec.title)}" open><summary><span class="st-chev">▶</span><span class="st-title">${esc(sec.title)}</span><span class="st-count">${cnt} ${plural(cnt, 'флаг', 'флага', 'флагов')}</span></summary><div class="story-sec-body">${inner}</div></details>`;
+      }
+    } else {
+
+      const sf = Core.STORY_FLAGS[ac] || {};
+      const sp = (Core.STORY_PERSIST && Core.STORY_PERSIST[ac]) || {};
+      const ORDER = ['darkWorld', 'gameshow', 'onion', 'lightWorld'];
+      const keys = [...new Set([...Object.keys(sf), ...Object.keys(sp)])].filter((k) => k !== 'vessel' && k !== 'thrashMachine');
+      keys.sort((a, b) => { const ia = ORDER.indexOf(a), ib = ORDER.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib); });
+      keys.forEach((key) => {
+        const merged = [...new Set([...(sf[key] || []), ...(sp[key] || [])])];
+        if (!merged.length) return;
+        const title = STORY_SECTION_TITLES[key] || key;
+        body += `<article class="card" style="margin-top:16px;"><h2>${esc(title)} (Глава ${ac})</h2>${grid(merged)}</article>`;
+      });
+    }
+
+    const rest = storyPersistFlags(ac).filter((i) => !shown.has(Number(i)));
+    if (rest.length) {
+      body += `<article class="card" style="margin-top:16px;"><h2>Остальные флаги Главы ${ac} <span style="color:var(--text-3);font-size:15px;">— ${rest.length}</span></h2><p class="sub">Флаги этой главы, не вошедшие в сюжетные блоки выше — в основном технические маркеры комнат, монеты и мелкие состояния. Их также можно править на вкладке «Флаги».</p><details class="story-rest"><summary>Показать остальные (${rest.length})</summary>${grid(rest)}</details></article>`;
+    }
     return `${subtabsHTML(tabs, active, 'story')}${note}${body}`;
   }
 
@@ -1121,7 +1667,7 @@
     const showNon = !!state.showNonRecruitable;
     const q = state.search.toLowerCase();
     const rname = (i, n) => (I18n.RECRUIT_DOCS && I18n.RECRUIT_DOCS[i]) || n.replace('RECRUIT_', '');
-    const groups = [['Глава 1', 1], ['Глава 2', 2], ['Глава 3', 3], ['Глава 4', 4]].map(([title, ch]) => {
+    const groups = [['Глава 1', 1], ['Глава 2', 2], ['Глава 3', 3], ['Глава 4', 4], ['Глава 5', 5]].map(([title, ch]) => {
       let list = named.filter(([i]) => (META[i] ? META[i].ch === ch : false));
       if (!showNon) list = list.filter(([i]) => META[i] && META[i].r);
       if (q) list = list.filter(([i, n]) => `${i} ${n} ${rname(i, n)}`.toLowerCase().includes(q));
@@ -1156,7 +1702,7 @@
         <button class="btn small" data-action="recruit-clear" type="button">Сбросить всех</button>
         <label class="check-row" style="padding:6px 10px;"><input type="checkbox" data-toggle="showNonRecruitable"${showNon ? ' checked' : ''}><span>Показать невербуемых (боссы, враги Гл. 1–2)</span></label>
       </div>${searchBar()}
-      
+
       ${groups.map(([title, list]) => {
         const total = list.length;
         const got = list.filter(([i]) => Number(slot.save.flags[i]) > 0).length;
@@ -1190,10 +1736,12 @@
     for (const [re, txt] of rules) if (re.test(name)) return txt;
     return 'Игровой флаг состояния.';
   }
-  function flagRowHTML(i, n, slot) {
+  function flagRowHTML(i, n, slot, showSections) {
     const doc = flagDoc(i); const value = slot.save.flags[i]||0;
     let control;
-    if (doc && doc.values) {
+    if (doc && doc.bits) {
+      control = `<span class="flag-value-readonly">Значение: ${esc(flagNumberDisplay(i, value))}</span>${bitmaskControlHTML(i, value, doc, true)}`;
+    } else if (doc && doc.values) {
       const has = Object.keys(doc.values).some(k => Number(k)===Number(value));
       let entries = Object.entries(doc.values).sort((a,b)=>Number(a[0])-Number(b[0]));
       if (!has) entries = [[value,`(${value})`], ...entries];
@@ -1208,10 +1756,10 @@
           if (nums.length) { const m = Math.max(...nums); if (m > 0) effMax = m; }
         }
       }
-      const mn = doc&&doc.min!==undefined?` min="${doc.min}"`:'';
-      const mx = effMax!==null?` max="${effMax}"`:'';
+      const mn = doc&&doc.min!==undefined?flagNumberAttr(i, 'min', doc.min):'';
+      const mx = effMax!==null?flagNumberAttr(i, 'max', effMax):'';
       const maxBtn = (effMax!==null) ? ` <button class="btn small" type="button" data-flagmax="${i}" data-maxval="${effMax}" title="Поставить максимум (из кода игры)">Макс.</button>` : '';
-      control = `<span style="display:inline-flex;gap:6px;align-items:center;"><input type="number" data-path="flags.${i}" value="${value}"${mn}${mx}>${maxBtn}</span>`;
+      control = `<span class="numwrap"><input type="number" data-path="flags.${i}" value="${esc(flagNumberDisplay(i, value))}"${mn}${mx}${flagNumberExtra(i)}>${flagNumberSuffix(i)}${maxBtn}</span>`;
     }
     let descHtml = doc&&doc.description ? `<span class="flag-desc">${esc(doc.description)}</span>` : '';
     if (!descHtml) {
@@ -1226,7 +1774,8 @@
     descHtml += flagDetailHTML(i);
     const fb = availBad('flags', i, slot.save.meta.chapter);
     const flagWarn = (fb && Number(value)!==0) ? `<div class="avail-warn" style="margin-top:5px;" title="${esc('Этот флаг игра использует только начиная с Главы '+fb+'. В более ранней главе его значение ни на что не влияет и может мешать.')}">⚠ Используется с Главы ${fb}</div>` : '';
-    return `<tr class="${(fb&&Number(value)!==0)?'row-warn':''}"><td>${i}</td><td><code>${esc(n)}</code></td><td>${control}</td><td>${descHtml}${flagWarn}</td></tr>`;
+    const sectionCell = showSections ? `<td>${flagSectionCellHTML(i)}</td>` : '';
+    return `<tr class="${(fb&&Number(value)!==0)?'row-warn':''}"><td>${i}</td><td><code>${esc(n)}</code></td><td>${control}</td>${sectionCell}<td>${descHtml}${flagWarn}</td></tr>`;
   }
 
   function renderFlags(slot) {
@@ -1236,10 +1785,10 @@
 
     if (active === 'all') {
 
-      const isReal = (i) => flagName(i) !== `FLAG_${i}` || !!flagDoc(i) || (slot.save.flags[i]||0) !== 0;
       const source = [];
-      for (let i = 0; i < max; i++) if (isReal(i)) source.push([i, flagName(i)]);
-      const filtered = source.filter(([i,n]) => !q || `${i} ${n} ${slot.save.flags[i]||0}`.toLowerCase().includes(q));
+      for (let i = 0; i < max; i++) { if (RESERVE_FLAGS.has(i)) continue; source.push([i, flagName(i)]); }
+      const categorized = categorizedFlagSet(max);
+      const filtered = source.filter(([i,n]) => (!q || `${i} ${n} ${slot.save.flags[i]||0}`.toLowerCase().includes(q)) && flagMatchesMissingFilters(i) && flagMatchesUnusedFilters(i) && flagMatchesRecruitFilters(i) && flagMatchesCategoryFilters(i, categorized) && flagMatchesReserveFilters(i, slot));
       const pages = Math.max(1, Math.ceil(filtered.length/state.flagPerPage));
       state.flagPage = Math.min(state.flagPage, pages);
       const start = (state.flagPage-1)*state.flagPerPage;
@@ -1248,14 +1797,17 @@
         <article class="card"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
           <div><h2>Все флаги</h2><p class="sub" style="margin:0">${filtered.length} найдено · стр. ${state.flagPage}/${pages}</p></div>
           <div class="inline-tools" style="gap:10px;flex-wrap:wrap;">
+            <label class="check-row" style="padding:6px 10px;"><input type="checkbox" data-toggle="flagHideUnused"${state.flagHideUnused?' checked':''}><span>Скрыть unused</span></label>
+            <label class="check-row" style="padding:6px 10px;"><input type="checkbox" data-toggle="flagOnlyUnused"${state.flagOnlyUnused?' checked':''}><span>Только unused</span></label>
+            <label class="check-row" style="padding:6px 10px;"><input type="checkbox" data-toggle="flagHideReserve"${state.flagHideReserve?' checked':''}><span>Скрыть резервные индексы</span></label>
             <label class="field" style="margin:0;flex-direction:row;align-items:center;gap:6px;"><span style="white-space:nowrap;">На странице:</span>
               <select data-setting="flagPerPage">${[25,50,100,200].map(n=>`<option value="${n}"${n===(state.flagPerPage||50)?' selected':''}>${n}</option>`).join('')}</select>
             </label>
             <div class="pager"><button class="btn small" data-action="flags-prev" type="button">Назад</button><button class="btn small" data-action="flags-next" type="button">Вперёд</button></div>
           </div>
         </div>
-        <div class="table-wrap"><table class="ed-table"><thead><tr><th style="width:64px">#</th><th style="width:190px">Имя</th><th style="width:230px">Значение</th><th>Описание</th></tr></thead><tbody>
-        ${rows.map(([i,n]) => flagRowHTML(i, n, slot)).join('')}
+        <div class="table-wrap"><table class="ed-table flags-table" style="min-width:980px"><thead><tr><th style="width:88px">#</th><th style="width:190px">Имя</th><th style="width:230px">Значение</th><th style="width:260px">Где</th><th>Описание</th></tr></thead><tbody>
+        ${rows.map(([i,n]) => flagRowHTML(i, n, slot, true)).join('')}
         </tbody></table></div></article>`;
     }
 
@@ -1279,14 +1831,16 @@
     };
     const chip = (key) => {
       const c = catMap[key]; if (!c) return '';
-      const acc = ({ persist1: ' chip-ch1', persist2: ' chip-ch2', persist3: ' chip-ch3', persist4: ' chip-ch4' })[key] || '';
-      const short = ({ persist1: 'Глава 1', persist2: 'Глава 2', persist3: 'Глава 3', persist4: 'Глава 4' })[key] || c[1];
+      const acc = ({ persist1: ' chip-ch1', persist2: ' chip-ch2', persist3: ' chip-ch3', persist4: ' chip-ch4', persist5: ' chip-ch5' })[key] || '';
+      const short = ({ persist1: 'Глава 1', persist2: 'Глава 2', persist3: 'Глава 3', persist4: 'Глава 4', persist5: 'Глава 5' })[key] || c[1];
       return `<button class="chip${acc}${curCat === key ? ' active' : ''}" type="button" data-flagcat="${esc(key)}">${esc(short)}<span class="chip-n">${catCount(key, c[2])}</span></button>`;
     };
     const CHIP_GROUPS = [
       ['Общие', ['system', 'battle', 'kill', 'meta']],
-      ['Маршруты', ['weird2', 'weird3', 'weird4', 'sword']],
-      ['Сохранённый выбор — по главам', ['persist1', 'persist2', 'persist3', 'persist4']],
+      ['Яйца', ['eggs']],
+      ['Маршруты', ['weird', 'sword']],
+      ['По коду игры', ['ch1', 'ch2', 'ch3', 'ch4', 'ch5', 'codeNotSave', 'codeUnknown']],
+      ['Сохранённый выбор — по главам', ['persist1', 'persist2', 'persist3', 'persist4', 'persist5']],
     ];
     const grouped = new Set(CHIP_GROUPS.flatMap(g => g[1]));
     const leftover = cats.map(c => c[0]).filter(k => !grouped.has(k));
@@ -1304,19 +1858,21 @@
       const isRecruit = indices === null;
       let list = isRecruit ? recruitIdx.slice() : indices.slice();
       if (docCatIndex[key]) list = list.concat(docCatIndex[key]);
-      list = [...new Set(list)].sort((a,b)=>a-b);
+      list = [...new Set(list)];
+      if (key !== 'weird' && key !== 'eggs') list.sort((a, b) => a - b);
       list = list.filter(i => i < max && matches(i));
       if (isRecruit && !state.showNonRecruitable && !q) list = list.filter(i => RMETA[i] && RMETA[i].r);
       if (!list.length) return '';
       totalShown += list.length;
       const recruitToggle = isRecruit ? `<label class="check-row" style="padding:6px 10px;margin:10px 0 0;"><input type="checkbox" data-toggle="showNonRecruitable"${state.showNonRecruitable?' checked':''}><span>Показать невербуемых (боссы, неиспользуемые индексы)</span></label>` : '';
       return `<article class="card" style="margin-bottom:14px;"><h2>${esc(label)}</h2>${recruitToggle}
-        <div class="table-wrap" style="margin-top:10px;"><table class="ed-table"><thead><tr><th style="width:60px">#</th><th style="width:180px">Имя</th><th style="width:230px">Значение</th><th>Описание</th></tr></thead><tbody>
+        <div class="table-wrap" style="margin-top:10px;"><table class="ed-table flags-table"><thead><tr><th style="width:88px">#</th><th style="width:180px">Имя</th><th style="width:230px">Значение</th><th>Описание</th></tr></thead><tbody>
         ${list.map(i => flagRowHTML(i, flagName(i), slot)).join('')}
         </tbody></table></div></article>`;
     }).join('');
     return `${subtabsHTML(FLAG_TABS, active, 'flags')}
       <p class="helper" style="margin-bottom:12px;">Флаги сгруппированы по категориям. Выберите категорию ниже или используйте «Все индексы» для доступа к любому из ${max} флагов.${q && curCat !== 'all' ? ' Поиск идёт только внутри выбранной категории.' : ''}</p>
+      ${conflictBanner(slot.save)}
       ${catChips}
       ${searchBar()}
       ${sections || '<div class="empty-state">Ничего не найдено.</div>'}`;
@@ -1329,6 +1885,7 @@
     if (active === 'versions') {
       body = `<article class="card"><h2>История версий</h2>
         <ul class="bullet-list" style="margin-top:12px;">
+          <li><b>v_0.2</b> — пятая глава/дамп/редактор save / 02.07.2026</li>
           <li><b>v_0.1</b> — альфа-тест / 23.06.2026</li>
         </ul></article>`;
     } else if (active === 'license') {
@@ -1362,7 +1919,7 @@ SOFTWARE.</pre>
           <li>Ассеты, текст и код игры: <a href="https://deltarune.com/" target="_blank" rel="noopener" style="color:var(--blue)">Toby Fox — DELTARUNE</a></li>
           <li>Дампы игры: <a href="https://github.com/UnderminersTeam/UndertaleModTool" target="_blank" rel="noopener" style="color:var(--blue)">UNDERTALE MOD TOOL</a></li>
           <li>Русский перевод: <a href="https://t.me/darkgodteam" target="_blank" rel="noopener" style="color:var(--blue)">DarkgoD Team</a></li>
-          <li>Вдохновение: <a href="https://saveeditor.spamton.com/" target="_blank" rel="noopener" style="color:var(--blue)">saveeditor.spamton.com</a>, <a href="https://tennaproject.com/" target="_blank" rel="noopener" style="color:var(--blue)">tennaproject.com</a></li>
+          <li>Вдохновение: <a href="https://saveeditor.spamton.com/" target="_blank" rel="noopener" style="color:var(--blue)">saveeditor.spamton.com</a></li>
         </ul></article>`;
     } else {
       body = `<article class="card accent-red"><h2>О редакторе</h2>
@@ -1400,7 +1957,8 @@ SOFTWARE.</pre>
     const ch = slot.save.meta.chapter;
     let completion = !!slot.save.meta.isCompletionSave;
     let slotNum = Number(slot.save.meta.slot) || 0;
-    const fname = () => `filech${ch}_${completion ? slotNum + 3 : slotNum}`;
+    let sideB = !!slot.save.meta.sideB;
+    const fname = () => `filech${ch}_${completion ? slotNum + 3 : slotNum}${sideB ? '_b' : ''}`;
     els.modalRoot.innerHTML = `
       <div class="modal-overlay" data-modal-overlay>
         <div class="modal">
@@ -1410,7 +1968,8 @@ SOFTWARE.</pre>
           <label class="field"><span>Номер ФАЙЛА</span>
             <select id="mdSlot">${[0,1,2].map(n=>`<option value="${n}"${n===slotNum?' selected':''}>ФАЙЛ ${n+1}</option>`).join('')}</select>
           </label>
-          <label class="check-row" style="margin:4px 0 14px;"><input type="checkbox" id="mdCompletion"${completion?' checked':''} disabled><span>Сохранение после титров (Completion save) — для следующей главы</span></label>
+          <label class="check-row" style="margin:4px 0 14px;"><input type="checkbox" id="mdCompletion"${completion?' checked':''}><span>Сохранение после титров (Completion save) — для следующей главы</span></label>
+          ${sideB ? `<p class="helper" style="color:var(--text-3);font-size:13px;">Это сохранение Weird Route (Side B) — файл сохранится с суффиксом <code>_b</code>, как в оригинале (напр. <code>filech5_4_b</code>).</p>` : ''}
           <p class="helper">Файл будет сохранён как: <code id="mdName">${fname()}</code></p>
           <div class="modal-actions">
             <button class="btn primary" id="mdDownload" type="button">Скачать</button>
@@ -1423,7 +1982,7 @@ SOFTWARE.</pre>
     byId('mdCompletion').addEventListener('change', (e) => { completion = e.target.checked; refresh(); });
     byId('mdCancel').addEventListener('click', closeModal);
     els.modalRoot.querySelector('[data-modal-overlay]').addEventListener('click', (e) => { if (e.target===e.currentTarget) closeModal(); });
-    byId('mdDownload').addEventListener('click', () => doDownload(fname(), slotNum, completion));
+    byId('mdDownload').addEventListener('click', () => doDownload(fname(), slotNum, completion, sideB));
   }
   function plural(n, one, few, many) {
     const m = Math.abs(n) % 100, m2 = m % 10;
@@ -1432,11 +1991,12 @@ SOFTWARE.</pre>
     if (m2 === 1) return one;
   return many;
   }
-  function doDownload(filename, slotNum, completion) {
+  function doDownload(filename, slotNum, completion, sideB) {
     const slot = current(); if (!slot) return;
     try {
       slot.save.meta.slot = Number(slotNum) || 0;
       slot.save.meta.isCompletionSave = !!completion;
+      slot.save.meta.sideB = !!sideB;
       const text = Core.serializeSave(slot.save);
       const blob = new Blob([text], {type:'application/octet-stream'});
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
@@ -1451,13 +2011,14 @@ SOFTWARE.</pre>
     try { parsed = JSON.parse(text); if (parsed.save) parsed = parsed.save; }
     catch { parsed = Core.parseSave(text, {name:file.name.replace(/\.[^.]+$/,'')}); }
 
-    const slotMatch = file.name.match(/filech(\d+)_(\d+)/i);
+    const slotMatch = file.name.match(/filech(\d+)_(\d+)(_b)?/i);
     if (slotMatch) {
       const detectedChapter = parseInt(slotMatch[1], 10);
-      if (detectedChapter >= 1 && detectedChapter <= 4) {
+      if (detectedChapter >= 1 && detectedChapter <= 5) {
         parsed.meta.chapterHint = detectedChapter;
         parsed.meta.chapter = Core.detectChapter(parsed);
       }
+      parsed.meta.sideB = !!slotMatch[3];
       const detectedSlot = parseInt(slotMatch[2], 10);
       if (detectedSlot >= 0 && detectedSlot <= 2) {
         parsed.meta.slot = detectedSlot;
@@ -1473,7 +2034,7 @@ SOFTWARE.</pre>
 
     const slot = makeSlot(parsed.meta?.name || parsed.playerName || file.name.replace(/\.[^.]+$/,''), parsed, {kind:'save',fileName:file.name,size:file.size});
     state.saves.unshift(slot); state.selectedId = slot.id; state.dirty = false; persist(); render();
-    toast('Файл импортирован — Глава ' + parsed.meta.chapter + (parsed.meta.isCompletionSave ? ' (completion)' : ''),'success');
+    toast('Файл импортирован — Глава ' + parsed.meta.chapter + (parsed.meta.isCompletionSave ? ' (completion)' : '') + (parsed.meta.sideB ? ' · Side B (Weird Route)' : ''),'success');
   }
 
   document.addEventListener('click', (e) => {
@@ -1501,10 +2062,28 @@ SOFTWARE.</pre>
       slot.save.flags[i] = mv; touch(); render();
       return;
     }
+    if (btn.dataset.flagbitsAll) {
+      const i = Number(btn.dataset.flagbitsAll); const mask = Number(btn.dataset.mask) || 0;
+      const slot = current(); if (!slot) return;
+      slot.save.flags[i] = mask; touch(); render();
+      return;
+    }
+    if (btn.dataset.flagbitsUpto) {
+      const i = Number(btn.dataset.flagbitsUpto); const mask = Number(btn.dataset.mask) || 0;
+      const slot = current(); if (!slot) return;
+      slot.save.flags[i] = mask; touch(); render();
+      return;
+    }
+    if (btn.dataset.flagbitsClear) {
+      const i = Number(btn.dataset.flagbitsClear);
+      const slot = current(); if (!slot) return;
+      slot.save.flags[i] = 0; touch(); render();
+      return;
+    }
     if (btn.dataset.vchoice) {
       const idx = Number(btn.dataset.vchoice); const val = Number(btn.dataset.vval);
       const slot = current(); if (!slot) return;
-      slot.save.flags[idx] = val; touch(); render();
+      slot.save.flags[idx] = val; touch(); render(); warnConflicts(slot.save, idx);
       return;
     }
     if (btn.dataset.vpart) {
@@ -1513,6 +2092,15 @@ SOFTWARE.</pre>
       const max = PART_MAX[idx] || 0; let v = (slot.save.flags[idx] || 0) + dir;
       if (v < 0) v = 0; if (v > max) v = max;
       slot.save.flags[idx] = v; touch(); render();
+      return;
+    }
+    if (btn.dataset.sffocus) { const f = btn.dataset.sffocus; state.sfFocus = (f === 'end') ? 'end' : Number(f); state.sfScroll = false; if (f === 'end') toast('Наряд сохранён'); render(); return; }
+    if (btn.dataset.sfarrow) {
+      const idx = Number(btn.dataset.sfarrow); const dir = Number(btn.dataset.dir);
+      const slot = current(); if (!slot) return;
+      const p = SUSIEFIT.find(x => x.flag === idx); const n = p ? p.frames : 1;
+      const v = ((Number(slot.save.flags[idx] || 0) + dir) % n + n) % n;
+      slot.save.flags[idx] = v; state.sfFocus = idx; touch(); render();
       return;
     }
     if (btn.dataset.goflag) {
@@ -1543,6 +2131,8 @@ SOFTWARE.</pre>
       case 'duplicate-slot': return duplicateSlot();
       case 'delete-slot': return deleteSlot();
       case 'reset-slot': return resetSlot();
+      case 'story-expand': document.querySelectorAll('.story-sec, .story-cluster').forEach(d => { d.open = true; }); return;
+      case 'story-collapse': document.querySelectorAll('.story-sec').forEach(d => { d.open = false; }); return;
       case 'heal': { const c = current().save.characters[Number(a.character)]; if (c) c.health = c.maxHealth; touch(); render(); return; }
       case 'max-stats': { const c = current().save.characters[Number(a.character)]; if (c) { c.health=999;c.maxHealth=999;c.attack=99;c.defence=99;c.magic=99;c.guts=99; } touch(); render(); toast('Статы максимизированы'); return; }
       case 'recruit-all': { const M = (window.KnightChars && window.KnightChars.RECRUIT_META) || {}; Core.DATA.flags.filter(([i,n])=>n.startsWith('RECRUIT_') && M[i] && M[i].r).forEach(([i])=>current().save.flags[i]=1); touch(); render(); toast('Завербованы все вербуемые','success'); return; }
@@ -1574,7 +2164,13 @@ SOFTWARE.</pre>
       return;
     }
     if (t.dataset.slotPath) return setSlotField(t.dataset.slotPath, t.value);
-    if (t.dataset.toggle) { state[t.dataset.toggle] = t.checked; persist(); render(); return; }
+    if (t.dataset.toggle) {
+      state[t.dataset.toggle] = t.checked;
+      if (t.dataset.toggle === 'flagHideUnused' && t.checked) state.flagOnlyUnused = false;
+      if (t.dataset.toggle === 'flagOnlyUnused' && t.checked) state.flagHideUnused = false;
+      if (['flagMissingOnly', 'flagMissingStoryOnly', 'flagMissingPersistOnly', 'flagHideReserve', 'flagHideUnused', 'flagOnlyUnused', 'flagHideRecruits', 'flagHideCategorized'].includes(t.dataset.toggle)) state.flagPage = 1;
+      persist(); render(); return;
+    }
     if (t.dataset.recruitCheck) { const i = Number(t.dataset.recruitCheck); const slot = current(); if (slot) { slot.save.flags[i] = t.checked ? 1 : 0; touch(); render(); } return; }
     if (t.dataset.recruit) {
       const i = Number(t.dataset.recruit); const count = Number(t.dataset.count) || 1;
@@ -1592,6 +2188,27 @@ SOFTWARE.</pre>
       return;
     }
     if (t.dataset.setting) { state[t.dataset.setting] = toNumber(t.value); state.flagPage = 1; persist(); render(); return; }
+
+    if (t.dataset.flagbit) {
+      const i = Number(t.dataset.flagbit); const bit = Number(t.dataset.bit);
+      const slot = current(); if (!slot) return;
+      const mask = 1 << bit;
+      const cur = Number(slot.save.flags[i] || 0);
+      slot.save.flags[i] = t.checked ? (cur | mask) : (cur & ~mask);
+      touch(); render();
+      return;
+    }
+    if (t.dataset.flagbits) {
+      const i = Number(t.dataset.flagbits); const bit = Number(t.dataset.bit); const width = Number(t.dataset.width) || 1;
+      const slot = current(); if (!slot) return;
+      const mask = ((1 << width) - 1) << bit;
+      const max = (1 << width) - 1;
+      const v = Math.max(0, Math.min(max, toNumber(t.value)));
+      const cur = Number(slot.save.flags[i] || 0);
+      slot.save.flags[i] = (cur & ~mask) | (v << bit);
+      touch(); render();
+      return;
+    }
 
     if (t.dataset.itemnum !== undefined && t.type === 'number' && t.dataset.path) {
       let value = toNumber(t.value); if (value < 0) value = 0;
@@ -1611,6 +2228,7 @@ SOFTWARE.</pre>
     if (!t.dataset.path) return;
     const isSelect = t.tagName==='SELECT';
     const isCheck = t.type==='checkbox';
+    const flagPath = /^flags\.(\d+)$/.exec(t.dataset.path);
     let value = isCheck ? (t.checked?1:0) : ((t.type==='number'||t.type==='range'||isSelect) ? toNumber(t.value) : t.value);
     if (t.type==='number') {
       const mn = t.getAttribute('min'), mx = t.getAttribute('max');
@@ -1621,8 +2239,14 @@ SOFTWARE.</pre>
       if (mx!==null && value > Number(mx)) { bad = true; }
       if (wrap) wrap.classList.toggle('invalid', bad);
     }
+    if (flagPath && t.type === 'number') value = flagNumberStored(Number(flagPath[1]), value);
 
     setPath(t.dataset.path, value, { rerender: isSelect || isCheck });
+    if (flagPath) {
+      const fi = Number(flagPath[1]); const s = current();
+      clearTimeout(conflictWarnDebounce);
+      conflictWarnDebounce = setTimeout(() => { if (s) warnConflicts(s.save, fi); }, 350);
+    }
   });
 
   els.saveSwitch.addEventListener('change', (e) => { state.selectedId = e.target.value; persist(); render(); });
@@ -1653,8 +2277,56 @@ SOFTWARE.</pre>
     els.backdrop.classList.remove('show');
   });
   window.addEventListener('hashchange', () => { syncRouteFromHash(); render(); });
+  function handleSusieFitKey(e) {
+    if (els.modalRoot.innerHTML) return;
+    if (!document.querySelector('.tf-screen')) return;
+    const slot = current(); if (!slot) return;
+    const t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+    const k = e.key.toLowerCase();
+    const code = e.code;
+    const has = (arr) => arr.includes(k) || arr.includes(code);
+    const UP = ['w', 'arrowup', 'KeyW', 'ArrowUp'], DOWN = ['s', 'arrowdown', 'KeyS', 'ArrowDown'];
+    const LEFT = ['a', 'arrowleft', 'KeyA', 'ArrowLeft'], RIGHT = ['d', 'arrowright', 'KeyD', 'ArrowRight'];
+    const CONFIRM = ['e', 'z', 'enter', 'KeyE', 'KeyZ', 'Enter', 'NumpadEnter'], CANCEL = ['q', 'c', 'KeyQ', 'KeyC'];
+    const isU = has(UP), isD = has(DOWN), isL = has(LEFT), isR = has(RIGHT), isC = has(CONFIRM), isX = has(CANCEL);
+    if (!(isU || isD || isL || isR || isC || isX)) return;
+    e.preventDefault();
+
+    const grid = SUSIEFIT_GRID;
+    const valid = [1421, 1422, 1423, 1424, 1425, 'end'];
+    let focus = valid.includes(state.sfFocus) ? state.sfFocus : 1421;
+    let col = 0, row = 0;
+    for (let c = 0; c < 2; c++) for (let r = 0; r < 3; r++) if (grid[c][r] === focus) { col = c; row = r; }
+    const setFocus = (c, r) => { state.sfFocus = grid[c][r]; };
+
+    if (state.sfScroll && focus !== 'end') {
+      const flag = focus;
+      if (isL || isR) {
+        const dir = isR ? 1 : -1;
+        const p = SUSIEFIT.find(x => x.flag === flag); const n = p.frames;
+        slot.save.flags[flag] = ((Number(slot.save.flags[flag] || 0) + dir) % n + n) % n;
+        touch(); render(); return;
+      }
+      if (isC || isX) { state.sfScroll = false; render(); return; }
+      if (isU) { state.sfScroll = false; setFocus(col, (row + 2) % 3); render(); return; }
+      if (isD) { state.sfScroll = false; setFocus(col, (row + 1) % 3); render(); return; }
+      return;
+    }
+
+    if (isU) { setFocus(col, (row + 2) % 3); render(); return; }
+    if (isD) { setFocus(col, (row + 1) % 3); render(); return; }
+    if (isL) { setFocus(0, row); render(); return; }
+    if (isR) { setFocus(1, row); render(); return; }
+    if (isC) {
+      if (focus === 'end') { toast('Наряд сохранён'); return; }
+      state.sfScroll = true; render(); return;
+    }
+  }
+
   document.addEventListener('keydown', (e) => {
     if (e.key==='Escape' && els.modalRoot.innerHTML) closeModal();
+    handleSusieFitKey(e);
   });
 
   render();

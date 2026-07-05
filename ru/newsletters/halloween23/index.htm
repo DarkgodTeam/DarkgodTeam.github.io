@@ -103,7 +103,7 @@
   .site-nav,.site-nav *{box-sizing:border-box}
   .site-nav ul{list-style:none!important;margin:0!important;padding:0!important}
   .site-nav>div{position:relative!important;width:100%!important;height:48px!important}
-  .site-nav>div>ul:first-child{height:48px!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:clamp(24px,5vw,72px)!important;padding:0 148px 0 16px!important;font-family:"8bitOperatorPlus-Bold","8bitOperatorPlus",monospace!important;text-transform:uppercase!important}
+  .site-nav>div>ul:first-child{height:48px!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:16px!important;width:min(100%,672px)!important;margin:0 auto!important;padding:0!important;font-family:"8bitOperatorPlus-Bold","8bitOperatorPlus",monospace!important;text-transform:uppercase!important}
   .site-nav>div>ul:first-child li{display:block!important;margin:0!important;padding:0!important;color:inherit!important;line-height:1!important}
   .site-nav>div>ul:first-child li::marker{content:""!important}
   .site-nav>div>ul:first-child a{display:block!important;color:#fff!important;text-decoration:none!important;font-size:18px!important;line-height:48px!important;text-shadow:2px 2px 0 #000!important;transition:opacity .15s!important}
@@ -114,6 +114,10 @@
   #regions img{display:block!important;width:36px!important;height:24px!important;object-fit:cover!important}
   @media(max-width:720px){.site-nav>div>ul:first-child{justify-content:flex-start!important;gap:10px!important;padding-right:132px!important}.site-nav>div>ul:first-child a{font-size:12px!important}#regions img{width:32px!important;height:22px!important}}
 </style>
+<script>(function(d){var de=d.documentElement;de.classList.add('pt-anim');function h(){de.classList.add('pt-loaded');}if(d.readyState==='complete')setTimeout(h,1000);else addEventListener('load',function(){setTimeout(h,1000);});setTimeout(h,6000);})(document);</script>
+<style id="pt-style">html.pt-anim::before{content:"";position:fixed;inset:0;z-index:2147483600;background:#0c0a14;opacity:1;transition:opacity .45s ease;}html.pt-anim.pt-loaded::before{opacity:0;pointer-events:none;}#pt-gif{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483601;width:135px;height:135px;object-fit:contain;image-rendering:pixelated;pointer-events:none;opacity:1;transition:opacity .45s ease;}html.pt-anim.pt-loaded #pt-gif{opacity:0;}html.pt-anim.pt-gone::before,html.pt-anim.pt-gone #pt-gif{display:none;}@media (prefers-reduced-motion:reduce){html.pt-anim::before,#pt-gif{transition:opacity .12s linear;}}</style>
+<script src="../../assets/js/page-loader-gifs.js" defer></script>
+<script src="../../assets/js/page-transition.js" defer></script>
 </head>
   <body class="newsletter  no-js" style="background-color: black">
 <nav class="site-nav w-full z-40 overflow-hidden bg-nav-blue">
@@ -232,7 +236,7 @@
   </tr>
 
   <tr class="blurb">
-    <td><p class="text-center"><img src="../../list_48/campaign_5/allsans.gif" alt="images of various characters dressed up. Ex. Sans dressed up as a skeleton"></p></td>
+    <td><p class="text-center"><img src="../../../assets/gifs/allsans.gif" alt="images of various characters dressed up. Ex. Sans dressed up as a skeleton"></p></td>
   </tr>
 </table>
 

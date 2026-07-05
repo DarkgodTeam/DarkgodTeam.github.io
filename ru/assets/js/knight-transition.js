@@ -416,12 +416,12 @@
     if (reducedMotion()) return;
     var knightPending = lsGet('kt-shown-knight') !== '1';
 
-    // The Chapter-3 question is shown on ANY Russian page (immediately, hides the page).
+
     if (knightPending && lsGet('kt-ch3') === null) { askCh3(afterGate); }
     else { afterGate(); }
 
     function afterGate() {
-      // The actual transition (Knight) plays ONLY on the main page, once.
+
       if (!isMainPage()) return;
       var kp = lsGet('kt-shown-knight') !== '1';
       if (kp && lsGet('kt-ch3') === 'yes' && window.KnightTransition && window.KnightTransition.play) window.KnightTransition.play();

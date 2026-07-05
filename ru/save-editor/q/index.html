@@ -12,8 +12,8 @@
   <link rel="icon" type="image/png" href="../game-sprites/spr_heart_0.png">
   <style>
     @font-face { font-family:'PixelOp'; src:url('../fonts/PixelOperator.woff2') format('woff2'); font-display:swap; }
-    @font-face { font-family:'cs8bit'; src:url('../fonts/8bitOperatorPlus-Bold.ttf') format('truetype'); font-display:swap; }
-    @font-face { font-family:'8bitOperatorJVE'; src:url('../fonts/8bitoperator_jve_v2_01.ttf') format('truetype'); font-display:swap; }
+    @font-face { font-family:'cs8bit'; src:url('../fonts/8bitOperatorPlus-Bold.woff2') format('woff2'), url('../fonts/8bitOperatorPlus-Bold.ttf') format('truetype'); font-display: block; }
+    @font-face { font-family:'8bitOperatorJVE'; src:url('../fonts/8bitoperator_jve_v2_01.woff2') format('woff2'), url('../fonts/8bitoperator_jve_v2_01.ttf') format('truetype'); font-display:swap; }
     html,body{margin:0;height:100%;background:#000;overflow:hidden;}
     body{display:flex;align-items:center;justify-content:center;font-family:'8bitOperatorJVE','PixelOp',monospace;}
     #wrap{display:flex;flex-direction:column;align-items:center;gap:0;}
@@ -31,6 +31,10 @@
     #fade{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity .35s linear;z-index:50;}
     #fade.on{opacity:1;}
   </style>
+<script>(function(d){var de=d.documentElement;de.classList.add('pt-anim');function h(){de.classList.add('pt-loaded');}if(d.readyState==='complete')setTimeout(h,1000);else addEventListener('load',function(){setTimeout(h,1000);});setTimeout(h,6000);})(document);</script>
+<style id="pt-style">html.pt-anim::before{content:"";position:fixed;inset:0;z-index:2147483600;background:#0c0a14;opacity:1;transition:opacity .45s ease;}html.pt-anim.pt-loaded::before{opacity:0;pointer-events:none;}#pt-gif{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483601;width:135px;height:135px;object-fit:contain;image-rendering:pixelated;pointer-events:none;opacity:1;transition:opacity .45s ease;}html.pt-anim.pt-loaded #pt-gif{opacity:0;}html.pt-anim.pt-gone::before,html.pt-anim.pt-gone #pt-gif{display:none;}@media (prefers-reduced-motion:reduce){html.pt-anim::before,#pt-gif{transition:opacity .12s linear;}}</style>
+<script src="../../assets/js/page-loader-gifs.js" defer></script>
+<script src="../../assets/js/page-transition.js" defer></script>
 </head>
 <body>
   <div id="wrap">
