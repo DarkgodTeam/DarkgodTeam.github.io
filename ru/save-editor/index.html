@@ -428,10 +428,10 @@
     .dlg.gamebox .tbx-bl { bottom:0; left:0; transform:scaleY(-1); }
     .dlg.gamebox .tbx-br { bottom:0; right:0; transform:scale(-1,-1); }
     .dlg.gamebox .tbx-edge { position:absolute; image-rendering:pixelated; z-index:2; }
-    .dlg.gamebox .tbx-top { top:0; left:32px; right:32px; height:24px; background:url(game-sprites/spr_textbox_top_0.png) repeat-x; background-size:2px 24px; }
-    .dlg.gamebox .tbx-bottom { bottom:0; left:32px; right:32px; height:24px; background:url(game-sprites/spr_textbox_top_0.png) repeat-x; background-size:2px 24px; transform:scaleY(-1); }
-    .dlg.gamebox .tbx-left { left:0; top:32px; bottom:32px; width:24px; background:url(game-sprites/spr_textbox_left_0.png) repeat-y; background-size:24px 2px; }
-    .dlg.gamebox .tbx-right { right:0; top:32px; bottom:32px; width:24px; background:url(game-sprites/spr_textbox_left_0.png) repeat-y; background-size:24px 2px; transform:scaleX(-1); }
+    .dlg.gamebox .tbx-top { top:0; left:32px; right:32px; height:24px; background:url(game-sprites/spr_textbox_top_0.png?v=2) no-repeat; background-size:100% 24px; }
+    .dlg.gamebox .tbx-bottom { bottom:0; left:32px; right:32px; height:24px; background:url(game-sprites/spr_textbox_top_0.png?v=2) no-repeat; background-size:100% 24px; transform:scaleY(-1); }
+    .dlg.gamebox .tbx-left { left:0; top:32px; bottom:32px; width:24px; background:url(game-sprites/spr_textbox_left_0.png?v=2) no-repeat; background-size:24px 100%; }
+    .dlg.gamebox .tbx-right { right:0; top:32px; bottom:32px; width:24px; background:url(game-sprites/spr_textbox_left_0.png?v=2) no-repeat; background-size:24px 100%; transform:scaleX(-1); }
     
     .dlg-cond-head { display:flex; align-items:center; gap:7px; margin:14px 0 5px; font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--yellow); }
     .dlg-cond-head:first-child { margin-top:0; }
@@ -555,8 +555,8 @@
       .dlg { gap:10px; padding:24px 22px; }
       .dlg.gamebox::before { inset:12px; }
       .dlg.gamebox .tbx { width:26px; height:26px; background-size:26px 26px; }
-      .dlg.gamebox .tbx-top, .dlg.gamebox .tbx-bottom { left:26px; right:26px; height:20px; background-size:2px 20px; }
-      .dlg.gamebox .tbx-left, .dlg.gamebox .tbx-right { top:26px; bottom:26px; width:20px; background-size:20px 2px; }
+      .dlg.gamebox .tbx-top, .dlg.gamebox .tbx-bottom { left:26px; right:26px; height:20px; background-size:100% 20px; }
+      .dlg.gamebox .tbx-left, .dlg.gamebox .tbx-right { top:26px; bottom:26px; width:20px; background-size:20px 100%; }
       .dlg-face img { height:72px; }
       .dlg-line { font-size:15px; }
       .color-grid { max-width:100%; }
