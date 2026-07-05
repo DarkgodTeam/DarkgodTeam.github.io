@@ -8039,82 +8039,82 @@
     "related": [1403, 1406, 1407, 1409, 1415, 1416],
     "lines": [
       {
-        "cond": "разговор с Брэтти (con 70, значение → 1)",
+        "cond": "разговор с Алигэтти (con 70, значение → 1)",
         "who": "narration",
         "text": "* Y'know, like, I..."
       },
       {
-        "cond": "разговор с Брэтти (con 70, значение → 1)",
+        "cond": "разговор с Алигэтти (con 70, значение → 1)",
         "who": "narration",
         "text": "* It's really, like... all that grody pizza guy's fault, y'know?"
       },
       {
-        "cond": "разговор с Брэтти (con 70, значение → 1)",
+        "cond": "разговор с Алигэтти (con 70, значение → 1)",
         "who": "narration",
         "text": "* I was just... I was just, like..."
       },
       {
-        "cond": "разговор с Брэтти (con 70, значение → 1)",
+        "cond": "разговор с Алигэтти (con 70, значение → 1)",
         "who": "narration",
         "text": "* ..."
       },
       {
-        "cond": "разговор с Брэтти (con 70, значение → 1)",
+        "cond": "разговор с Алигэтти (con 70, значение → 1)",
         "who": "narration",
         "text": "* K... Krissy, go tell bunny boy, like..."
       },
       {
-        "cond": "разговор с Брэтти (con 70, значение → 1)",
+        "cond": "разговор с Алигэтти (con 70, значение → 1)",
         "who": "narration",
         "text": "* He's too good for that guy, y'know?"
       },
       {
-        "cond": "разговор с Брэтти (con 70, значение → 1)",
+        "cond": "разговор с Алигэтти (con 70, значение → 1)",
         "who": "narration",
         "text": "* Y'know, Bratty said so. And I'm like, always right, right?"
       },
       {
-        "cond": "разговор с Брэтти (con 70, повторно, flag 1415 == 1)",
+        "cond": "разговор с Алигэтти (con 70, повторно, flag 1415 == 1)",
         "who": "narration",
         "text": "* K... Krissy, g-go tell bunny boy it's not my fault. Haha."
       },
       {
-        "cond": "разговор с Брэтти (con 76, значение → 1)",
+        "cond": "разговор с Алигэтти (con 76, значение → 1)",
         "who": "narration",
         "text": "* What the-- what the hell?!"
       },
       {
-        "cond": "разговор с Брэтти (con 76, значение → 1)",
+        "cond": "разговор с Алигэтти (con 76, значение → 1)",
         "who": "narration",
         "text": "* How does HE deserve HER!?"
       },
       {
-        "cond": "разговор с Брэтти (con 76, значение → 1)",
+        "cond": "разговор с Алигэтти (con 76, значение → 1)",
         "who": "narration",
         "text": "* I like... God, I should've like..."
       },
       {
-        "cond": "разговор с Брэтти (con 76, значение → 1)",
+        "cond": "разговор с Алигэтти (con 76, значение → 1)",
         "who": "narration",
         "text": "* Poisoned or killed him. Like, evil style. Damn it!"
       },
       {
-        "cond": "разговор с Брэтти (con 76, повторно)",
+        "cond": "разговор с Алигэтти (con 76, повторно)",
         "who": "narration",
         "text": "* What? I sound jealous and toxic? Like, shut up?"
       },
       {
-        "cond": "разговор с Брэтти (con 76, повторно)",
+        "cond": "разговор с Алигэтти (con 76, повторно)",
         "who": "narration",
         "text": "* I'm actually like, the opposite? Healing, and like, CORRECT?"
       },
       {
-        "cond": "разговор с Брэтти (con 76, повторно)",
+        "cond": "разговор с Алигэтти (con 76, повторно)",
         "who": "narration",
         "text": "* She's just like, my copy, right? So like..."
       },
       {
-        "cond": "разговор с Брэтти (con 76, повторно)",
+        "cond": "разговор с Алигэтти (con 76, повторно)",
         "who": "narration",
         "text": "* She should have like, MY standards, too!? Damnit!"
       }
@@ -8304,37 +8304,37 @@
     "related": [1403, 1406, 1407, 1408, 1409, 1416],
     "lines": [
       {
-        "cond": "Первый разговор с Брэтти (1415=0)",
+        "cond": "Первый разговор с Алигэтти (1415=0)",
         "who": "narration",
         "text": "* Y'know, like, I..."
       },
       {
-        "cond": "Первый разговор с Брэтти (1415=0)",
+        "cond": "Первый разговор с Алигэтти (1415=0)",
         "who": "narration",
         "text": "* It's really, like... all that grody pizza guy's fault, y'know?"
       },
       {
-        "cond": "Первый разговор с Брэтти (1415=0)",
+        "cond": "Первый разговор с Алигэтти (1415=0)",
         "who": "narration",
         "text": "* I was just... I was just, like..."
       },
       {
-        "cond": "Первый разговор с Брэтти (1415=0)",
+        "cond": "Первый разговор с Алигэтти (1415=0)",
         "who": "narration",
         "text": "* ..."
       },
       {
-        "cond": "Первый разговор с Брэтти (1415=0)",
+        "cond": "Первый разговор с Алигэтти (1415=0)",
         "who": "narration",
         "text": "* K... Krissy, go tell bunny boy, like..."
       },
       {
-        "cond": "Первый разговор с Брэтти (1415=0)",
+        "cond": "Первый разговор с Алигэтти (1415=0)",
         "who": "narration",
         "text": "* He's too good for that guy, y'know?"
       },
       {
-        "cond": "Первый разговор с Брэтти (1415=0)",
+        "cond": "Первый разговор с Алигэтти (1415=0)",
         "who": "narration",
         "text": "* Y'know, Bratty said so. And I'm like, always right, right?"
       },
@@ -8349,32 +8349,32 @@
         "text": "* ..."
       },
       {
-        "cond": "Катсцена: Брэтти узнаёт ответ (ставит 1415=3)",
+        "cond": "Катсцена: Алигэтти узнаёт ответ (ставит 1415=3)",
         "who": "narration",
         "text": "* ... he said... what?"
       },
       {
-        "cond": "Катсцена: Брэтти узнаёт ответ (ставит 1415=3)",
+        "cond": "Катсцена: Алигэтти узнаёт ответ (ставит 1415=3)",
         "who": "narration",
         "text": "* ..."
       },
       {
-        "cond": "Катсцена: Брэтти узнаёт ответ (ставит 1415=3)",
+        "cond": "Катсцена: Алигэтти узнаёт ответ (ставит 1415=3)",
         "who": "narration",
         "text": "* ... that... makes sense."
       },
       {
-        "cond": "Если позвать Брэтти, которой нет рядом (1415=1)",
+        "cond": "Если позвать Алигэтти, которой нет рядом (1415=1)",
         "who": "narration",
         "text": "* ... Bratty?"
       },
       {
-        "cond": "Если позвать Брэтти, которой нет рядом (1415=1)",
+        "cond": "Если позвать Алигэтти, которой нет рядом (1415=1)",
         "who": "narration",
         "text": "* ..."
       },
       {
-        "cond": "Если позвать Брэтти, которой нет рядом (1415=1)",
+        "cond": "Если позвать Алигэтти, которой нет рядом (1415=1)",
         "who": "narration",
         "text": "* I don't have any friends named that."
       },
@@ -8430,7 +8430,7 @@
     "related": [1393, 1394, 1395, 1396, 1397, 1419],
     "lines": [
       {
-        "cond": "Сцена с Катти у церкви (ставит 1418=1, Катти исчезает)",
+        "cond": "Сцена с Кетти у церкви (ставит 1418=1, Кетти исчезает)",
         "who": "noelle",
         "text": "* (Anyway, let's just try to enjoy the rest...)"
       }
@@ -9427,57 +9427,57 @@
     "related": [342, 1324, 1376, 1377, 1435, 1436],
     "lines": [
       {
-        "cond": "при значении 0 (Асгор ест Медовый тост — ставит флаг в 1)",
+        "cond": "при значении 0 (Азгор ест Медовый тост — ставит флаг в 1)",
         "who": "narration",
         "text": "What? Kris? You made toast, for me?"
       },
       {
-        "cond": "при значении 0 (Асгор ест Медовый тост — ставит флаг в 1)",
+        "cond": "при значении 0 (Азгор ест Медовый тост — ставит флаг в 1)",
         "who": "narration",
         "text": "Why, ahaha, you didn't have to do that!"
       },
       {
-        "cond": "при значении 0 (Асгор ест Медовый тост — ставит флаг в 1)",
+        "cond": "при значении 0 (Азгор ест Медовый тост — ставит флаг в 1)",
         "who": "narration",
         "text": "..."
       },
       {
-        "cond": "при значении 0 (Асгор ест Медовый тост — ставит флаг в 1)",
+        "cond": "при значении 0 (Азгор ест Медовый тост — ставит флаг в 1)",
         "who": "narration",
         "text": "(Asgore ate the Honey Toast.)"
       },
       {
-        "cond": "при значении 0 (Асгор ест Медовый тост — ставит флаг в 1)",
+        "cond": "при значении 0 (Азгор ест Медовый тост — ставит флаг в 1)",
         "who": "narration",
         "text": "This always was one of your best dishes."
       },
       {
-        "cond": "при значении 0 (Асгор ест Медовый тост — ставит флаг в 1)",
+        "cond": "при значении 0 (Азгор ест Медовый тост — ставит флаг в 1)",
         "who": "narration",
         "text": "... remember how you two used to eat bread?"
       },
       {
-        "cond": "при значении 0 (Асгор ест Медовый тост — ставит флаг в 1)",
+        "cond": "при значении 0 (Азгор ест Медовый тост — ставит флаг в 1)",
         "who": "narration",
         "text": "Fold it into quarters... take a couple bites, and..."
       },
       {
-        "cond": "при значении 0 (Асгор ест Медовый тост — ставит флаг в 1)",
+        "cond": "при значении 0 (Азгор ест Медовый тост — ставит флаг в 1)",
         "who": "narration",
         "text": "See? It's kind of like a snowflake! Hahaha!"
       },
       {
-        "cond": "при значении 0 (Асгор ест Медовый тост — ставит флаг в 1)",
+        "cond": "при значении 0 (Азгор ест Медовый тост — ставит флаг в 1)",
         "who": "narration",
         "text": "\"Too many crumbs\", your mother said."
       },
       {
-        "cond": "при значении 0 (Асгор ест Медовый тост — ставит флаг в 1)",
+        "cond": "при значении 0 (Азгор ест Медовый тост — ставит флаг в 1)",
         "who": "narration",
         "text": "But crumbs can come in handy, too. Can't they, Kris?"
       },
       {
-        "cond": "при значении 0 (Асгор ест Медовый тост — ставит флаг в 1)",
+        "cond": "при значении 0 (Азгор ест Медовый тост — ставит флаг в 1)",
         "who": "narration",
         "text": "... well. Have a wonderful day."
       }
@@ -10062,7 +10062,7 @@
     "detail": "Гл.4. В obj_treasure_room (Create) при i_ex(obj_dw_churchc_prophecies) || room==room_dw_churchc_prophecies: itemflag=1610, itemtype=\"armor\", itemidchest=53. Флаг хранит факт открытия сундука. На что влияет: разовую выдачу брони id 53 в комнате пророчеств церкви C."
   },
   "1611": {
-    "detail": "Гл.4, obj_dw_churchc_prophecies (зал пророчеств церкви C). Показывает РОВНО три знамения по маркерам prop1/prop2/prop3: «Небеса и Ад» (две строфы heavenandhell1/2) и шуточное про Джокингтона (joke1). flag[1611]=1 ставится, когда игрок доходит до выхода (маркер \"return\"). Не сбрасывается.",
+    "detail": "Гл.4, obj_dw_churchc_prophecies (зал пророчеств церкви C). Показывает РОВНО три знамения по маркерам prop1/prop2/prop3: «Небеса и Ад» (две строфы heavenandhell1/2) и шуточное про Чёткинса (joke1). flag[1611]=1 ставится, когда игрок доходит до выхода (маркер \"return\"). Не сбрасывается.",
     "fx": {
       "proph": {
         "items": [
@@ -11456,27 +11456,27 @@
         "text": "* ... mine. Mine! MINE!!!"
       },
       {
-        "cond": "выбор «Glamorous voice» (отдан ТВ, flag 779==2), значение <4 → +4",
+        "cond": "выбор «Glamorous voice» (Тенна отдана Меттатону/Напстаблуку, flag 779==2), значение <4 → +4",
         "who": "narration",
         "text": "* Normally I keep it shut, but..."
       },
       {
-        "cond": "выбор «Glamorous voice» (отдан ТВ, flag 779==2), значение <4 → +4",
+        "cond": "выбор «Glamorous voice» (Тенна отдана Меттатону/Напстаблуку, flag 779==2), значение <4 → +4",
         "who": "narration",
         "text": "* If I think of the window as a screen..."
       },
       {
-        "cond": "выбор «Glamorous voice» (отдан ТВ, flag 779==2), значение <4 → +4",
+        "cond": "выбор «Glamorous voice» (Тенна отдана Меттатону/Напстаблуку, flag 779==2), значение <4 → +4",
         "who": "narration",
         "text": "* The Festival sure looks gorgeous this year."
       },
       {
-        "cond": "выбор «Glamorous voice» (отдан ТВ, flag 779==2), значение <4 → +4",
+        "cond": "выбор «Glamorous voice» (Тенна отдана Меттатону/Напстаблуку, flag 779==2), значение <4 → +4",
         "who": "narration",
         "text": "* Here, let me videotape it for you, Tenna."
       },
       {
-        "cond": "выбор «Glamorous voice» (отдан ТВ, flag 779==2), значение <4 → +4",
+        "cond": "выбор «Glamorous voice» (Тенна отдана Меттатону/Напстаблуку, flag 779==2), значение <4 → +4",
         "who": "narration",
         "text": "* Then we'll both have... a little something new to watch."
       },
@@ -12305,7 +12305,7 @@
     "related": [1327, 1328, 1883, 1324, 1326, 1329],
     "lines": [
       {
-        "cond": "цветы Асгора (Сторона Б), повторно (значение 1)",
+        "cond": "цветы Азгора (Сторона Б), повторно (значение 1)",
         "who": "susie",
         "text": "* Flowers are boring."
       }
