@@ -7,7 +7,6 @@
 
   const ROUTES = {
     welcome:      { label: 'Главное',      desc: 'Основные параметры: имя, глава, деньги, комната, время.' },
-    inventory:    { label: 'Вещи',         desc: 'Расходуемые, «важные» предметы, оружие, броня, хранилище.' },
     party:        { label: 'Команда',      desc: 'Состав команды, характеристики, экипировка, заклинания.' },
     'light-world':{ label: 'Мир света',    desc: 'Параметры Крис в Мире света, предметы и телефон.' },
     story:        { label: 'Сюжет',        desc: 'Vessel, Thrash Machine, прогресс по главам.' },
@@ -15,7 +14,7 @@
     flags:        { label: 'Флаги',        desc: 'Продвинутый редактор флагов с описаниями из кода игры.' },
     about:        { label: 'О редакторе',  desc: 'Информация о проекте, история версий, лицензия.' },
   };
-  const GROUP_DEFAULT = { inventory: 'consumables', party: 'overview', story: 'ch1', flags: 'known', about: 'overview' };
+  const GROUP_DEFAULT = { party: 'overview', story: 'ch1', flags: 'known', about: 'overview' };
   const INVENTORY_TABS = [['consumables','Расходуемые'],['keyItems','Важные'],['weapons','Оружие'],['armors','Броня'],['storage','Хранилище']];
   const PARTY_TABS = [['overview','Обзор']];
   const FLAG_TABS = [['known','По категориям'],['all','Все индексы']];
@@ -843,7 +842,7 @@
     renderChrome();
     const slot = current();
     if (!slot && state.route !== 'about') { els.content.innerHTML = renderNoSave(); persist(); return; }
-    const renderers = { welcome:renderWelcome, inventory:renderInventory, party:renderParty, 'light-world':renderLightWorld, story:renderStory, recruits:renderRecruits, flags:renderFlags, about:renderAbout };
+    const renderers = { welcome:renderWelcome, party:renderParty, 'light-world':renderLightWorld, story:renderStory, recruits:renderRecruits, flags:renderFlags, about:renderAbout };
     els.content.innerHTML = (renderers[state.route] || renderWelcome)(slot);
     mountEquipMenu();
     mountLightMenu();
