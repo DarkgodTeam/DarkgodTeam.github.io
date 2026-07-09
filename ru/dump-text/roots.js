@@ -11,6 +11,37 @@
   var curChapter = 0;
   var STORE_KEY = 'dumptext-state-v1';
   var restoring = false, savedPage = 1, savedScroll = 0;
+  var PATCH_DAYS = [
+    {
+      id: '2026-07-09',
+      label: '09/07/2026',
+      chapters: {
+        5: [
+          'scr_text_slash_scr_text_gml_7511_0',
+          'obj_shop_ch5_slash_Create_0_gml_313_0',
+          'obj_shop_ch5_slash_Create_0_gml_314_0',
+          'obj_shop_ch5_slash_Create_0_gml_315_0',
+          'obj_shop_ch5_slash_Create_0_gml_316_0',
+          'obj_shop_ch5_slash_Create_0_gml_317_0',
+          'obj_shop_ch5_slash_Create_0_gml_318_0',
+          'obj_shop_ch5_slash_Create_0_gml_319_0',
+          'obj_shop_ch5_slash_Create_0_gml_320_0',
+          'obj_shop_ch5_slash_Create_0_gml_321_0',
+          'obj_shop_ch5_slash_Create_0_gml_322_0',
+          'obj_shop_ch5_slash_Create_0_gml_323_0',
+          'obj_shop_ch5_slash_Create_0_gml_324_0',
+          'obj_shop_ch5_slash_Create_0_gml_325_0',
+          'obj_shop_ch5_slash_Create_0_gml_326_0',
+          'scr_credit_slash_scr_credit_gml_62_0',
+          'scr_credit_slash_scr_credit_gml_63_0',
+          'scr_credit_slash_scr_credit_gml_82_0',
+          'scr_credit_slash_scr_credit_gml_273_0',
+          'scr_text_slash_scr_text_gml_7513_0_b'
+        ]
+      }
+    }
+  ];
+  var patchKeyCache = {};
 
   var DATA = [];
 
@@ -18,7 +49,8 @@
     q: '',
     scope: { a: true, b: true, c: true },
     cols: { a: true, b: true, c: true },
-    mode: { case: false, word: false, regex: false, empty: false, dialog: false, noUnused: false, noDup: false },
+    mode: { case: false, word: false, regex: false, empty: false, dialog: false, noUnused: false, noDup: false, newPhrases: false },
+    patchDay: PATCH_DAYS[0] ? PATCH_DAYS[0].id : '',
     condFlags: [],
     weirdRoute: false,
     page: 1,
@@ -33,6 +65,7 @@
     colChips: document.getElementById('colChips'),
     scopeChips: document.getElementById('scopeChips'),
     modeChips: document.getElementById('modeChips'),
+    patchModeChips: document.getElementById('patchModeChips'),
     regexErr: document.getElementById('regexErr'),
     count: document.getElementById('count'),
     perPage: document.getElementById('perPage'),
@@ -43,6 +76,7 @@
     cgC: document.getElementById('cgC'),
     chapterSelect: document.getElementById('chapterSelect'),
     heroChapter: document.getElementById('heroChapter'),
+    patchDay: document.getElementById('patchDay'),
     flagCond: document.getElementById('flagCond'),
     dlgModal: document.getElementById('dlgModal'),
     dlgClose: document.getElementById('dlgClose'),
@@ -150,9 +184,34 @@
     }
   }
 
+  function patchDayInfo(id) {
+    for (var i = 0; i < PATCH_DAYS.length; i++) {
+      if (PATCH_DAYS[i].id === id) return PATCH_DAYS[i];
+    }
+    return PATCH_DAYS[0] || null;
+  }
+
+  function patchKeysFor(chapter, dayId) {
+    var day = patchDayInfo(dayId);
+    if (!day) return {};
+    var cacheKey = day.id + ':' + chapter;
+    if (patchKeyCache[cacheKey]) return patchKeyCache[cacheKey];
+    var keys = (day.chapters && day.chapters[chapter]) || [];
+    var out = {};
+    for (var i = 0; i < keys.length; i++) out[keys[i]] = 1;
+    patchKeyCache[cacheKey] = out;
+    return out;
+  }
+
+  function isNewPhraseKey(key) {
+    if (!state.mode.newPhrases) return true;
+    return !!patchKeysFor(curChapter, state.patchDay)[key];
+  }
+
   function rowMatches(row, re) {
     var en = row.cleanEn != null ? row.cleanEn : row[1];
     var ja = row.cleanJa != null ? row.cleanJa : row[2];
+    if (state.mode.newPhrases && !isNewPhraseKey(row[0])) return false;
     if (state.mode.empty && en && ja) return false;
     if (state.mode.noUnused && (!en || !ja)) return false;
     if (state.mode.noDup && en && ja && normForDup(en) === normForDup(ja)) return false;
@@ -180,7 +239,7 @@
 
   function applyFilter() {
     var re = buildMatcher();
-    if (!state.q && !state.mode.empty && !state.mode.dialog && !state.mode.noUnused && !state.mode.noDup && !state.weirdRoute && !(state.condFlags && state.condFlags.length)) {
+    if (!state.q && !state.mode.empty && !state.mode.dialog && !state.mode.noUnused && !state.mode.noDup && !state.mode.newPhrases && !state.weirdRoute && !(state.condFlags && state.condFlags.length)) {
       state.filtered = DATA;
     } else {
       var out = [];
@@ -310,12 +369,15 @@
     state.q = '';
     state.scope = { a: true, b: true, c: true };
     state.cols = { a: true, b: true, c: true };
-    state.mode = { case: false, word: false, regex: false, empty: false, dialog: false, noUnused: false, noDup: false };
+    state.mode = { case: false, word: false, regex: false, empty: false, dialog: false, noUnused: false, noDup: false, newPhrases: false };
+    state.patchDay = PATCH_DAYS[0] ? PATCH_DAYS[0].id : '';
     state.condFlags = []; state.weirdRoute = false;
     if (els.flagCond) els.flagCond.value = '';
+    if (els.patchDay) els.patchDay.value = state.patchDay;
     var wl = document.querySelector('label[data-cond="weird"]');
     if (wl) { wl.classList.remove('on'); var wb = wl.querySelector('input'); if (wb) wb.checked = false; }
     syncChipUI();
+    syncPatchDayUI();
     applyColumns();
     applyFilter();
   });
@@ -329,12 +391,13 @@
       var key;
       if (group === 'cols') { key = label.getAttribute('data-col'); state.cols[key] = on; applyColumns(); }
       else if (group === 'scope') { key = label.getAttribute('data-scope'); state.scope[key] = on; applyFilter(); }
-      else { key = label.getAttribute('data-mode'); state.mode[key] = on; applyFilter(); }
+      else { key = label.getAttribute('data-mode'); state.mode[key] = on; syncPatchDayUI(); applyFilter(); }
     });
   }
   bindChips(els.colChips, 'cols');
   bindChips(els.scopeChips, 'scope');
   bindChips(els.modeChips, 'mode');
+  if (els.patchModeChips) bindChips(els.patchModeChips, 'mode');
 
   if (els.flagCond) els.flagCond.addEventListener('input', function () {
     state.condFlags = els.flagCond.value.split(/[^\d]+/).map(Number).filter(function (n) { return n > 0; });
@@ -359,6 +422,38 @@
         if (box) box.checked = on;
       }
     });
+    if (els.patchModeChips) {
+      var patchLabels = els.patchModeChips.querySelectorAll('label');
+      for (var j = 0; j < patchLabels.length; j++) {
+        var pk = patchLabels[j].getAttribute('data-mode');
+        var pon = !!state.mode[pk];
+        patchLabels[j].classList.toggle('on', pon);
+        var pbox = patchLabels[j].querySelector('input');
+        if (pbox) pbox.checked = pon;
+      }
+    }
+  }
+  function buildPatchDaySelect() {
+    if (!els.patchDay) return;
+    var html = '';
+    for (var i = 0; i < PATCH_DAYS.length; i++) {
+      var d = PATCH_DAYS[i];
+      html += '<option value="' + d.id + '">' + escapeHtml(d.label) + '</option>';
+    }
+    els.patchDay.innerHTML = html;
+    if (state.patchDay) els.patchDay.value = state.patchDay;
+    els.patchDay.addEventListener('change', function () {
+      state.patchDay = els.patchDay.value;
+      if (state.mode.newPhrases) applyFilter();
+      else doSave();
+    });
+    syncPatchDayUI();
+  }
+  function syncPatchDayUI() {
+    if (!els.patchDay) return;
+    if (!state.patchDay && PATCH_DAYS[0]) state.patchDay = PATCH_DAYS[0].id;
+    if (els.patchDay.value !== state.patchDay) els.patchDay.value = state.patchDay;
+    els.patchDay.disabled = !state.mode.newPhrases;
   }
 
   els.perPage.addEventListener('change', function () {
@@ -400,6 +495,7 @@
         scope: state.scope,
         cols: state.cols,
         mode: state.mode,
+        patchDay: state.patchDay,
         condFlags: state.condFlags,
         weirdRoute: state.weirdRoute,
         perPage: state.perPage,
@@ -1534,6 +1630,7 @@
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !els.dlgModal.hidden) closeDialog(); });
 
   buildChapterSelect();
+  buildPatchDaySelect();
 
   var saved = loadSaved();
   if (saved && saved.chapter) {
@@ -1542,6 +1639,7 @@
     state.scope = Object.assign({ a: true, b: true, c: true }, saved.scope || {});
     state.cols = Object.assign({ a: true, b: true, c: true }, saved.cols || {});
     state.mode = Object.assign(state.mode, saved.mode || {});
+    state.patchDay = patchDayInfo(saved.patchDay) ? saved.patchDay : state.patchDay;
     state.condFlags = saved.condFlags || [];
     state.weirdRoute = !!saved.weirdRoute;
     state.perPage = saved.perPage || 100;
@@ -1551,12 +1649,14 @@
     if (els.perPage) els.perPage.value = String(state.perPage);
     if (els.flagCond) els.flagCond.value = (state.condFlags || []).join(' ');
     syncChipUI();
+    syncPatchDayUI();
     var wl0 = document.querySelector('label[data-cond="weird"]');
     if (wl0) { wl0.classList.toggle('on', state.weirdRoute); var wb0 = wl0.querySelector('input'); if (wb0) wb0.checked = state.weirdRoute; }
     if (els.chapterSelect) els.chapterSelect.value = String(saved.chapter);
     applyColumns();
     loadChapter(saved.chapter);
   } else {
+    syncPatchDayUI();
     applyColumns();
     loadChapter(DEFAULT_CHAPTER);
   }

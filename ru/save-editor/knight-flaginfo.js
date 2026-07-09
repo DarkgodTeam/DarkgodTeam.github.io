@@ -10474,6 +10474,36 @@
       }
     ]
   },
+  "1711": {
+  "detail": "Активация: в меню obj_shop_ch5 выбрать Talk после того, как global.flag[1846] уже >= 2. Если одновременно выполнены scr_flag_get(1895) > 0 (игрок активировал obj_plat_testtarget: on_act вызывает obj_plat_player.get_hurt(...), меняет sprite_index на IMAGE_FRIEND/device_friend и ставит 1895=1), scr_flag_get(941) > 0 (получен Egg у человека за деревом) и scr_flag_get(1711) == 0, Draw вызывает load_dialogue(UnknownEnum.Value_5). Внутри Value_5 Create немедленно ставит scr_flag_set(1711, 1), глушит текущую музыку, включает overlay у фона магазина и выводит скрытый диалог про cat bite. На последующих Talk условие 1711 == 0 уже ложно, поэтому запускается обычный Value_4.",
+  "related": [
+    941,
+    1846,
+    1895
+  ],
+  "lines": [
+    {
+      "cond": "Value_5, первый Talk при 1846>=2, 1895>0, 941>0, 1711==0",
+      "who": "narration",
+      "text": "* (Suddenly, the shopkeeper's body took your hand, and talked in a low voice only you could hear...)"
+    },
+    {
+      "cond": "Value_5",
+      "who": "shopkeeper/body",
+      "text": "* Kris, is your hand okay? It looks like... you've got a cat bite, mew."
+    },
+    {
+      "cond": "Value_5",
+      "who": "shopkeeper/body",
+      "text": "* Kris, if you have any protein, you must keep it hidden, and never let anyone see it."
+    },
+    {
+      "cond": "Value_5",
+      "who": "shopkeeper/body",
+      "text": "* Please be careful, Kris... promise..."
+    }
+  ]
+},
   "1720": {
     "related": [254],
     "lines": [
@@ -13540,6 +13570,9 @@
     ]
   },
   "1895": {
+    "sprites": [
+      { "src": "game-sprites/flagfx/FRIEND_ENCOUNTER.gif", "cond": "FRIEND_ENCOUNTER" }
+    ],
     "lines": [
 
     ]

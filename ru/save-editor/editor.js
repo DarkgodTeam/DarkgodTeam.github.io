@@ -584,7 +584,13 @@
     return html ? `<div class="flag-extra">${html}</div>` : '';
   }
   function spritesHTML(sprites) {
-    const items = sprites.map(s => `<figure class="flag-fx-state"><img src="game-sprites/flagfx/${esc(s.src)}.png" alt="${esc(s.src)}" onerror="this.closest('figure').style.display='none'"><figcaption>${esc(s.cond || '')}</figcaption></figure>`).join('');
+    const items = sprites.map(s => {
+      const raw = String(s.src || '');
+      const src = (/^(?:https?:)?\/\//.test(raw) || /^data:/.test(raw) || raw.includes('/') || /\.[a-z0-9]+$/i.test(raw))
+        ? raw
+        : `game-sprites/flagfx/${raw}.png`;
+      return `<figure class="flag-fx-state"><img src="${esc(src)}" alt="${esc(raw)}" onerror="this.closest('figure').style.display='none'"><figcaption>${esc(s.cond || '')}</figcaption></figure>`;
+    }).join('');
     return `<div class="flag-fx-states-wrap"><span class="flag-fx-states-cap">Спрайт в игре:</span><div class="flag-fx-states">${items}</div></div>`;
   }
   function flagConflicts(i) { const d = flagDetail(i); return (d && d.conflicts) || []; }

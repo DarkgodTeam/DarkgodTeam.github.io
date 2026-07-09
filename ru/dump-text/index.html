@@ -144,6 +144,13 @@
     .chk.on[data-mode="dialog"] { color:#4dffc3; border-color:#4dffc3; background:#06201a; box-shadow:0 0 12px rgba(77,255,195,.3); }
     .chk.on[data-mode="noUnused"] { color:var(--pink); border-color:var(--pink); background:#1c0c17; box-shadow:0 0 12px rgba(255,123,213,.3); }
     .chk.on[data-mode="noDup"]  { color:#ffe14d; border-color:#ffe14d; background:#1c1805; box-shadow:0 0 12px rgba(255,225,77,.3); }
+    .chk.on[data-mode="newPhrases"] { color:#ff9a3c; border-color:#ff9a3c; background:#1c1206; box-shadow:0 0 12px rgba(255,154,60,.3); }
+
+    .patch-pick { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:10px; color:var(--dim); font-size:15px; text-transform:uppercase; letter-spacing:.06em; }
+    .patch-pick select { background:#000; border:3px solid var(--line); color:#fff; height:42px; padding:0 10px; font-size:17px; cursor:pointer; min-width:180px; }
+    .patch-pick select:hover, .patch-pick select:focus { outline:none; border-color:var(--yellow); }
+    .patch-pick select:disabled { opacity:.45; cursor:not-allowed; border-color:#3a4255; }
+    .patch-filter-chips { margin-top:8px; }
 
     .opt-note { margin-top:14px; padding:12px 15px; background:#080a12; border:2px solid #2c3346; border-left:4px solid var(--yellow); }
     .opt-note .opt-note-h { color:var(--yellow); font-size:12px; text-transform:uppercase; letter-spacing:.12em; margin-bottom:9px; }
@@ -157,6 +164,7 @@
     .opt-note b.n-dialog { color:#4dffc3; }
     .opt-note b.n-unused { color:var(--pink); }
     .opt-note b.n-dup    { color:#ffe14d; }
+    .opt-note b.n-new    { color:#ff9a3c; }
     .opt-note b.n-weird  { color:var(--cyan); }
 
     .meta-row { display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; margin:22px 0 12px; }
@@ -459,6 +467,13 @@
           <label class="chk" data-mode="noUnused" title="Скрыть буквальные unused-строки"><input type="checkbox">Без unused</label>
           <label class="chk" data-mode="noDup" title="Скрыть строки, где EN и 日本語 имеют одинаковый текст, то есть как unused"><input type="checkbox">Без дубликатов</label>
         </div>
+        <label class="patch-pick">
+          <span>День патча</span>
+          <select id="patchDay"></select>
+        </label>
+        <div class="opt-chips patch-filter-chips" id="patchModeChips">
+          <label class="chk" data-mode="newPhrases" title="Показать только строки, добавленные в выбранный патч"><input type="checkbox">Новые фразы</label>
+        </div>
       </div>
     </div>
     <div class="opt-row" style="margin-top:6px;">
@@ -480,6 +495,7 @@
         <li><b class="n-dialog">С диалогом</b> — показать только строки, у которых доступен просмотр диалога.</li>
         <li><b class="n-unused">Без unused</b> — скрыть буквальные unused-строки.</li>
         <li><b class="n-dup">Без дубликатов</b> — скрыть строки, где EN и 日本語 имеют одинаковый текст, то есть как unused.</li>
+        <li><b class="n-new">Новые фразы</b> — показать строки, добавленные в выбранный день патча.</li>
         <li><b class="n-weird">Weird Route — все диалоги</b> — показать все реплики Странного пути.</li>
       </ul>
     </div>
