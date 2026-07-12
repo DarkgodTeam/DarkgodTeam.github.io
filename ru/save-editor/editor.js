@@ -206,19 +206,20 @@
     for (const [v, str] of all) html += `<option value="${v}"${v === sel ? ' selected' : ''}>${str}</option>`;
     return html;
   }
+  function roomsForChapter(chapter) {
+    const ch = Number(chapter);
+    if (ch < 1 || ch > 5) return [];
+    const lo = ch * 10000, hi = lo + 9999;
+    return Core.DATA.rooms.filter(([v]) => v >= lo && v <= hi);
+  }
   function roomOptions(selected, chapter) {
     const sel = Number(selected);
     const ch = Number(chapter);
     const rawMode = sel < 10000 && ch >= 1 && ch <= 4;
-    let list;
-    if (rawMode) {
-      const lo = ch * 10000, hi = lo + 9999;
-      list = Core.DATA.rooms
-        .filter(([v]) => v >= lo && v <= hi)
-        .map(([v, label]) => [v - lo, label]);
-    } else {
-      list = Core.DATA.rooms.map(([v, label]) => [v, label]);
-    }
+    const chapterRooms = roomsForChapter(ch);
+    const list = rawMode
+      ? chapterRooms.map(([v, label]) => [v - (ch * 10000), label])
+      : chapterRooms;
     const has = list.some(([v]) => Number(v) === sel);
     const rows = has ? list : [[sel, `Room ${selected}`], ...list];
     return rows.map(([v, label]) => `<option value="${v}"${Number(v) === sel ? ' selected' : ''}>${esc(label)} (${v})</option>`).join('');
@@ -752,9 +753,10 @@
   function roomValidForSave(save) {
     const sel = Number(save.room), ch = Number(save.meta.chapter);
     const rawMode = sel < 10000 && ch >= 1 && ch <= 4;
-    let list;
-    if (rawMode) { const lo = ch * 10000; list = Core.DATA.rooms.filter(([x]) => x >= lo && x <= lo + 9999).map(([x]) => x - lo); }
-    else list = Core.DATA.rooms.map(([x]) => x);
+    const chapterRooms = roomsForChapter(ch);
+    const list = rawMode
+      ? chapterRooms.map(([x]) => x - (ch * 10000))
+      : chapterRooms.map(([x]) => x);
     return list.some((x) => Number(x) === sel);
   }
   function dogWarningBanner(save) {
