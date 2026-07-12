@@ -1893,6 +1893,7 @@
     if (active === 'versions') {
       body = `<article class="card"><h2>История версий</h2>
         <ul class="bullet-list" style="margin-top:12px;">
+          <li><b>v_0.3</b> — белые списки для комнат пятой главы / 12.07.2026</li>
           <li><b>v_0.2</b> — пятая глава/дамп/редактор save / 05.07.2026</li>
           <li><b>v_0.1</b> — альфа-тест / 23.06.2026</li>
         </ul></article>`;
