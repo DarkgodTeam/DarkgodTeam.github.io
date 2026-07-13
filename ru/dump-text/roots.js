@@ -91,6 +91,8 @@
 
   var dlgCache = {};
   var choicesCache = {};
+  var choicesUnitCache = {};
+  var currentUnitId = null;
   var currentUnitObj = null;
   var curDlg = null;
   var keyText = {};
@@ -543,15 +545,26 @@
   }
   function loadChoices(n) {
     n = Number(n);
-    if (choicesCache[n] !== undefined) { if (curChapter === n) window.__CHOICES = choicesCache[n] || {}; return; }
+    if (choicesCache[n] !== undefined) {
+      if (curChapter === n) {
+        window.__CHOICES = choicesCache[n] || {};
+        window.__CHOICES_UNITS = choicesUnitCache[n] || {};
+      }
+      return;
+    }
     window.__CHOICES = null;
+    window.__CHOICES_UNITS = null;
     var s = document.createElement('script');
     s.src = 'chapters/ch' + n + '/choices.js';
     s.onload = function () {
       choicesCache[n] = window.__CHOICES || {};
-      if (curChapter === n) window.__CHOICES = choicesCache[n];
+      choicesUnitCache[n] = window.__CHOICES_UNITS || {};
+      if (curChapter === n) {
+        window.__CHOICES = choicesCache[n];
+        window.__CHOICES_UNITS = choicesUnitCache[n];
+      }
     };
-    s.onerror = function () { choicesCache[n] = {}; };
+    s.onerror = function () { choicesCache[n] = {}; choicesUnitCache[n] = {}; };
     document.body.appendChild(s);
   }
 
@@ -606,13 +619,27 @@
   function cleanText(s) {
     if (!s) return '';
     var t = String(s);
+    var literals = [];
+    function protectLiteral(ch) {
+      var token = '\uE000' + literals.length + '\uE001';
+      literals.push(ch);
+      return token;
+    }
+    t = t.replace(/`([%#\/&\uFF05])/g, function (_, ch) { return protectLiteral(ch); });
+    t = t.replace(/(^|[\s"'])#(?=\d)/g, function (_, prefix) { return prefix + protectLiteral('#'); });
+    t = t.replace(/\\[Ee]~\d+/g, '');
     t = t.replace(/\\[A-Za-z][A-Za-z0-9]?/g, '');
-    t = t.replace(/\^\d/g, '');
+    t = t.replace(/\^\d+(?:\.\d+)?/g, '');
+    t = t.replace(/\^,/g, '');
     t = t.replace(/`/g, '');
     t = t.replace(/&/g, '\n');
+    t = t.replace(/#/g, '\n');
     t = t.replace(/\/%+/g, '').replace(/\/(?=\s*$)/g, '');
-    t = t.replace(/%+\s*$/g, '');
+    t = t.replace(/%{2,}\s*$/g, '');
+    t = t.replace(/(^|[^\d])%\s*$/g, '$1');
+    t = t.replace(/^[ \t]*(?:[*\uFF0A][ \t]*)+/gm, '');
     t = t.replace(/[ \t]+\n/g, '\n').replace(/\n[ \t]+/g, '\n').replace(/\n{3,}/g, '\n\n');
+    t = t.replace(/\uE000(\d+)\uE001/g, function (_, i) { return literals[Number(i)] || ''; });
     return t.trim();
   }
 
@@ -678,7 +705,7 @@
     var row = key && (keyText[key] || dlgText[key]);
     if (!row) return '';
     var t = cleanText(row[1]) || cleanText(row[2]);
-    return t.replace(/#/g, ' ').replace(/\s*\n\s*/g, ' ').replace(/\s{2,}/g, ' ').trim();
+    return t.replace(/\s*\n\s*/g, ' ').replace(/\s{2,}/g, ' ').trim();
   }
 
   function condLabel(c, vars) {
@@ -813,16 +840,28 @@
     return s;
   }
   var currentStateNum = null;
+  function currentMenus() {
+    if (typeof window === 'undefined') return [];
+    if (window.__CHOICES_UNITS && currentUnitId && window.__CHOICES_UNITS[currentUnitId]) {
+      return window.__CHOICES_UNITS[currentUnitId];
+    }
+    if (window.__CHOICES && currentUnitObj && window.__CHOICES[currentUnitObj]) {
+      return window.__CHOICES[currentUnitObj];
+    }
+    return [];
+  }
   function choicesLookup(choiceVal, contextLine) {
-    if (typeof window === 'undefined' || !window.__CHOICES || !currentUnitObj) return null;
-    var menus = window.__CHOICES[currentUnitObj];
+    var menus = currentMenus();
     if (!menus || !menus.length) return null;
     if (currentStateNum != null) {
+      var stateSeen = false;
       for (var k = 0; k < menus.length; k++) {
+        if (menus[k].state === currentStateNum) stateSeen = true;
         if (menus[k].state === currentStateNum && menus[k].opts && menus[k].opts[choiceVal]) {
           return menus[k].opts[choiceVal];
         }
       }
+      if (stateSeen || contextLine == null) return null;
     }
     var best = null;
     for (var i = 0; i < menus.length; i++) {
@@ -833,6 +872,53 @@
     }
     if (!best) best = menus[menus.length - 1];
     return (best && best.opts && best.opts[choiceVal]) || null;
+  }
+  function choiceOptionsAt(contextLine, stateNum) {
+    var menus = currentMenus();
+    if (!menus || !menus.length) return [];
+    var wantedState = stateNum != null ? stateNum : currentStateNum;
+    var pool = menus;
+    if (wantedState != null) {
+      var exact = menus.filter(function (m) { return m.state === wantedState; });
+      if (exact.length) pool = exact;
+      else if (contextLine == null) return [];
+    }
+    var best = null;
+    for (var i = 0; i < pool.length; i++) {
+      var m = pool[i];
+      if (contextLine == null || m.at <= contextLine) {
+        if (!best || m.at > best.at) best = m;
+      }
+    }
+    if (!best) best = pool[pool.length - 1];
+    return (best && best.opts) || [];
+  }
+  function missingChoiceLabel(items, contextLine, stateNum) {
+    var used = {};
+    (items || []).forEach(function (it) {
+      if (it.choiceVal != null) used[String(it.choiceVal)] = 1;
+    });
+    var opts = [];
+    (items || []).some(function (it) {
+      if (it.choiceVal == null || !it.optKey) return false;
+      var m = String(it.optKey).match(/^(.*_gml_)(\d+)(_\d+.*)$/);
+      if (!m) return false;
+      var baseLine = Number(m[2]) - Number(it.choiceVal), nearby = [];
+      for (var idx = 0; idx < 4; idx++) nearby[idx] = optText(m[1] + (baseLine + idx) + m[3]);
+      if (!nearby.some(Boolean)) return false;
+      opts = nearby;
+      return true;
+    });
+    if (!opts.some(Boolean)) opts = choiceOptionsAt(contextLine, stateNum);
+    var missing = [];
+    opts.forEach(function (label, idx) {
+      if (label && !used[String(idx)]) missing.push({ idx: idx, label: label });
+    });
+    if (!missing.length) return null;
+    return {
+      value: missing.map(function (it) { return '«' + it.label + '»'; }).join(' / '),
+      choiceVal: missing.length === 1 ? missing[0].idx : null
+    };
   }
   function firstLineOf(branch) {
     var minLine = Infinity;
@@ -860,9 +946,8 @@
   function decisionOf(c, vars) {
     var info = condInfo(c, vars);
     if (info.choices.length) {
-      var ot = optText(info.optKey);
-      if (!ot) ot = choicesLookup(info.choices[0]);
-      return { groupKey: 'choice', kind: 'choice', head: 'Выбор игрока', value: ot ? '«' + ot + '»' : ('значение ' + info.choices[0]) };
+      var ot = optText(info.optKey) || choicesLookup(info.choices[0]);
+      return { groupKey: 'choice', kind: 'choice', head: 'Выбор игрока', value: ot ? '«' + ot + '»' : ('значение ' + info.choices[0]), choiceVal: info.choices[0], optKey: info.optKey };
     }
     var bare = c.split('\u0001')[0];
     var sm = bare.match(/^\s*(?:global\.flag\[|scr_flag_get\()\s*(\d+)\s*[\])]?\s*(==|!=|>=|<=|>|<)\s*(-?\d+(?:\.\d+)?)\s*$/);
@@ -1074,7 +1159,7 @@
           gk = 'choice#' + menuSeq;
         }
         if (!gmap[gk]) { gmap[gk] = { head: d.head, kind: d.kind, flag: (d.kind === 'flag' ? Number(d.groupKey.slice(5)) : (info.flags.length ? info.flags[0] : null)), items: [] }; groups.push(gmap[gk]); }
-        gmap[gk].items.push({ value: d.value, op: d.op, val: d.val, flagNum: gmap[gk].flag, branches: [ch] });
+        gmap[gk].items.push({ value: d.value, op: d.op, val: d.val, choiceVal: d.choiceVal, optKey: d.optKey, flagNum: gmap[gk].flag, branches: [ch] });
         lastGroup = gmap[gk];
       } else {
         var bareCond = (ch.cond || '').split('\u0001')[0].trim();
@@ -1089,7 +1174,12 @@
         if (bareCond === 'иначе' && lastGroup) {
           var hasElse = lastGroup.items.some(function (x) { return /иначе|другой/i.test(x.value || ''); });
           if (!hasElse) {
-            lastGroup.items.push({ value: lastGroup.kind === 'choice' ? 'другой вариант' : 'иначе', branches: [ch] });
+            var otherChoice = lastGroup.kind === 'choice' ? missingChoiceLabel(lastGroup.items, firstLineOf(ch)) : null;
+            lastGroup.items.push({
+              value: otherChoice ? otherChoice.value : (lastGroup.kind === 'choice' ? 'другой вариант' : 'иначе'),
+              choiceVal: otherChoice ? otherChoice.choiceVal : null,
+              branches: [ch]
+            });
           } else {
             transparent.push(ch);
           }
@@ -1258,30 +1348,56 @@
     return html;
   }
 
-  function stateVarOf(unit) {
-    var cnt = {};
+  function stateVarsOf(unit) {
+    var cnt = {}, values = {};
+    function add(name, value, weight) {
+      cnt[name] = (cnt[name] || 0) + (weight || 1);
+      if (value != null) {
+        if (!values[name]) values[name] = {};
+        values[name][String(value)] = 1;
+      }
+    }
     function scan(conds) {
       (conds || []).forEach(function (c) {
         var bare = c.split('\u0001')[0];
-        var re = /\b([A-Za-z_]\w*)\s*==/g;
+        var re = /\b([A-Za-z_]\w*)\s*==\s*(-?\d+(?:\.\d+)?)/g;
         var m;
         while ((m = re.exec(bare))) {
           var name = m[1];
           if (/con$/.test(name) || name === 'myinteract' || name === 'talked') {
-            cnt[name] = (cnt[name] || 0) + 1;
+            add(name, m[2], 1);
           }
         }
       });
     }
     (unit.nodes || []).forEach(function (n) { scan(n.cond); });
-    (unit.consets || []).forEach(function (s) { scan(s.cond); });
-    var best = null, bn = 0;
-    for (var v in cnt) {
-      if (cnt[v] > bn || (cnt[v] === bn && v === 'con')) {
-        bn = cnt[v]; best = v;
-      }
+    if (unit.transitions && unit.transitions.length) {
+      unit.transitions.forEach(function (tr) {
+        add(tr.var, tr.from, 2);
+        scan(tr.guard);
+      });
+    } else {
+      (unit.consets || []).forEach(function (s) { scan(s.cond); });
     }
-    return bn >= 2 ? best : null;
+    var vars = Object.keys(cnt).filter(function (v) { return cnt[v] >= 2; });
+    vars.sort(function (a, b) {
+      var d = cnt[b] - cnt[a];
+      if (d) return d;
+      if (a === 'con') return -1;
+      if (b === 'con') return 1;
+      return a.localeCompare(b);
+    });
+    if (vars.length > 1) {
+      vars = vars.filter(function (v) {
+        var distinct = values[v] ? Object.keys(values[v]).length : 0;
+        return !/^(customcon|tempcon)$/.test(v) || distinct > 1;
+      });
+    }
+    return vars;
+  }
+  function stateVarOf(unit) {
+    var vars = stateVarsOf(unit);
+    return vars.length ? vars[0] : null;
   }
   function splitStateCond(cond, sv) {
     var st = null, rest = [];
@@ -1303,12 +1419,20 @@
       var key = s.state == null ? '__root' : s.state;
       ensure(key).lines.push({ key: n.key, speaker: n.speaker, en: n.en, ja: n.ja, cond: s.rest });
     });
-    (unit.consets || []).forEach(function (cs) {
-      if (cs.var !== sv) return;
-      var s = splitStateCond(cs.cond, sv);
-      var from = s.state == null ? '__root' : s.state;
-      ensure(from).exits.push({ to: cs.to, guard: s.rest });
-    });
+    if (unit.transitions && unit.transitions.length) {
+      unit.transitions.forEach(function (tr) {
+        if (tr.var !== sv) return;
+        var from = tr.from == null ? '__root' : tr.from;
+        ensure(from).exits.push({ to: tr.to, guard: tr.guard || [], line: tr.line, order: tr.order });
+      });
+    } else {
+      (unit.consets || []).forEach(function (cs) {
+        if (cs.var !== sv) return;
+        var s = splitStateCond(cs.cond, sv);
+        var from = s.state == null ? '__root' : s.state;
+        ensure(from).exits.push({ to: cs.to, guard: s.rest });
+      });
+    }
     return states;
   }
   function exitGuardKind(guard, vars) {
@@ -1317,6 +1441,16 @@
       var bare = c.split('\u0001')[0];
       var info = condInfo(c, vars);
       if (info.choices.length) return { kind: 'choice', val: info.choices[0], optKey: info.optKey };
+      var choiceNot = bare.match(/^\s*global\.choice\s*!=\s*(\d+)\s*$/);
+      if (choiceNot) {
+        var opts = choiceOptionsAt(null, currentStateNum), alternatives = [];
+        opts.forEach(function (label, idx) {
+          if (label && idx !== Number(choiceNot[1])) alternatives.push({ idx: idx, label: label });
+        });
+        if (alternatives.length === 1) {
+          return { kind: 'choice', val: alternatives[0].idx, label: '«' + alternatives[0].label + '»' };
+        }
+      }
       var sm = bare.match(/^\s*(?:global\.flag\[|scr_flag_get\()\s*(\d+)\s*[\])]?\s*(==|!=|>=|<=|>|<)\s*(-?\d+)\s*$/);
       if (sm) return { kind: 'flag', f: Number(sm[1]), op: sm[2], val: sm[3] };
     }
@@ -1338,12 +1472,22 @@
     if ((st.lines || []).some(nodeHasText)) return true;
     return (st.exits || []).some(function (e) { return e.to !== -1 && e.to !== 0 && stateHasText(states, e.to, seen); });
   }
+  function firstLineOfState(states, N) {
+    var st = states[N], minLine = Infinity;
+    if (!st) return null;
+    (st.lines || []).forEach(function (n) {
+      var m = n.key && n.key.match(/_gml_(\d+)_\d+/);
+      if (m) minLine = Math.min(minLine, Number(m[1]));
+    });
+    return isFinite(minLine) ? minLine : null;
+  }
   function forkHTML(kind, head, n, items) {
     var cnt = kind === 'choice' ? plural(n, 'вариант', 'варианта', 'вариантов') : plural(n, 'ветка', 'ветки', 'веток');
     var h = '<div class="fbox decision fork-' + kind + '"><span class="fork-ic"></span><span class="fork-title">' + escapeHtml(head) + '</span><span class="fork-n">' + n + ' ' + cnt + '</span></div>';
     h += '<ul class="kids fork-' + kind + '">';
     items.forEach(function (it) {
-      h += '<li><div class="kid-label">' + escapeHtml(it.label) + '</div><div class="flow">' + (it.body || '<div class="col-end">Ветка заканчивается после выбора</div>') + '</div></li>';
+      var debugAttrs = it.choiceVal != null ? ' data-choice-val="' + escapeHtml(String(it.choiceVal)) + '"' + (it.optKey ? ' data-opt-key="' + escapeHtml(it.optKey) + '"' : '') : '';
+      h += '<li' + debugAttrs + '><div class="kid-label">' + escapeHtml(it.label) + '</div><div class="flow">' + (it.body || '<div class="col-end">Ветка заканчивается после выбора</div>') + '</div></li>';
     });
     h += '</ul>';
     return h;
@@ -1368,18 +1512,36 @@
     var prevState = currentStateNum;
     currentStateNum = (typeof N === 'number') ? N : null;
     var html = renderStateBody(st, focusKey, vars);
-    currentStateNum = prevState;
     var choiceExits = [], flagGroups = {}, flagOrder = [], condExits = [], plain = [];
     (st.exits || []).forEach(function (e) {
       if (e.to === -1) return;
       var g = exitGuardKind(e.guard, vars);
       if (!g) { plain.push(e); return; }
 
-      if ((g.kind === 'flag' || g.kind === 'cond') && !stateHasText(states, e.to)) return;
+      if ((g.kind === 'flag' || (g.kind === 'cond' && !g.isElse)) && !stateHasText(states, e.to)) return;
       if (g.kind === 'choice') choiceExits.push({ e: e, g: g });
       else if (g.kind === 'flag') { var fk = 'flag:' + g.f; if (!flagGroups[fk]) { flagGroups[fk] = { f: g.f, items: [] }; flagOrder.push(fk); } flagGroups[fk].items.push({ e: e, g: g }); }
       else condExits.push({ e: e, g: g });
     });
+    if (choiceExits.length && condExits.some(function (x) { return x.g.isElse; })) {
+      var choiceContextLine = null;
+      choiceExits.forEach(function (x) {
+        var line = firstLineOfState(states, x.e.to);
+        if (line != null && (choiceContextLine == null || line < choiceContextLine)) choiceContextLine = line;
+      });
+      var missingExitChoice = missingChoiceLabel(choiceExits.map(function (x) { return { choiceVal: x.g.val, optKey: x.g.optKey }; }), choiceContextLine, (typeof N === 'number' ? N : null));
+      if (missingExitChoice) {
+        var remainingCondExits = [];
+        condExits.forEach(function (x) {
+          if (x.g.isElse) {
+            choiceExits.push({ e: x.e, g: { kind: 'choice', val: missingExitChoice.choiceVal, label: missingExitChoice.value } });
+          } else {
+            remainingCondExits.push(x);
+          }
+        });
+        condExits = remainingCondExits;
+      }
+    }
     if (choiceExits.length) {
       var ct = {}; choiceExits.forEach(function (x) { ct[x.e.to] = 1; });
       if (Object.keys(ct).length === 1) { plain.push({ to: choiceExits[0].e.to }); choiceExits = []; }
@@ -1394,12 +1556,28 @@
       if (Object.keys(dt).length === 1) { plain.push({ to: condExits[0].e.to }); condExits = []; }
     }
     if (choiceExits.length) {
+      var groupedChoiceExits = [], groupedChoiceMap = {};
+      choiceExits.forEach(function (x) {
+        var key = x.g.val != null ? String(x.g.val) : ('label:' + (x.g.label || ''));
+        if (!groupedChoiceMap[key]) { groupedChoiceMap[key] = { items: [] }; groupedChoiceExits.push(groupedChoiceMap[key]); }
+        groupedChoiceMap[key].items.push(x);
+      });
+      choiceExits = groupedChoiceExits;
       rendered.__f = (rendered.__f || 0) + 1;
       html += forkHTML('choice', 'Выбор игрока', choiceExits.length, choiceExits.map(function (x) {
-        var ot = optText(x.g.optKey);
-        if (!ot) ot = choicesLookup(x.g.val);
-        var lab = ot ? '«' + ot + '»' : 'значение ' + x.g.val;
-        return { label: lab, body: renderStateNode(x.e.to, states, sv, focusKey, vars, copyVisited(path), rendered, depth + 1) };
+        var first = x.items[0], g = first.g;
+        var stateOpts = choiceOptionsAt(null, (typeof N === 'number' ? N : null));
+        var ot = (stateOpts && stateOpts[g.val]) || g.label || optText(g.optKey) || choicesLookup(g.val);
+        var lab = g.label || (ot ? '«' + ot + '»' : 'значение ' + g.val);
+        var useful = x.items.filter(function (it) { return stateHasText(states, it.e.to); });
+        if (!useful.length) useful = [first];
+        var seenTargets = {}, body = '';
+        useful.forEach(function (it) {
+          if (seenTargets[it.e.to]) return;
+          seenTargets[it.e.to] = 1;
+          body += renderStateNode(it.e.to, states, sv, focusKey, vars, copyVisited(path), rendered, depth + 1);
+        });
+        return { label: lab, body: body, choiceVal: g.val, optKey: g.optKey };
       }));
     }
     flagOrder.forEach(function (fk) {
@@ -1421,11 +1599,12 @@
       }));
     }
     plain.forEach(function (e) { html += renderStateNode(e.to, states, sv, focusKey, vars, path, rendered, depth + 1); });
+    currentStateNum = prevState;
     return html;
   }
-  function renderGraph(unit, focusKey) {
+  function renderGraph(unit, focusKey, forcedStateVar) {
     var vars = unit.vars || {};
-    var sv = stateVarOf(unit);
+    var sv = forcedStateVar || stateVarOf(unit);
     if (!sv) return null;
     var states = buildStateGraph(unit, sv);
     var keys = Object.keys(states).filter(function (k) { return k !== '__root'; });
@@ -1471,9 +1650,52 @@
     var nodes = unit.nodes || [];
     var vars = unit.vars || {};
     if (!nodes.length) return '<div class="dlg-empty">Для этой строки нет реконструированного диалога.</div>';
-    var g = renderGraph(unit, focusKey);
-    if (g) return '<div class="flow">' + g + '</div>';
-    return '<div class="flow">' + renderInner(buildTree(nodes, vars), focusKey, vars) + '</div>';
+    var dynamicNote = '';
+    if (unit.stateExprs && unit.stateExprs.length) {
+      var dynamicSeen = {}, dynamicRows = [];
+      unit.stateExprs.forEach(function (x) {
+        var label = x.var + ' = ' + x.expr;
+        if (dynamicSeen[label]) return;
+        dynamicSeen[label] = 1;
+        dynamicRows.push('<code>' + escapeHtml(label) + '</code>');
+      });
+      dynamicNote = '<div class="dynamic-state-note">Точка входа задаётся параметрами экземпляра в игре: ' + dynamicRows.join(', ') + '. Ни одна возможная ветка ниже не скрыта.</div>';
+    }
+    var stateVars = stateVarsOf(unit);
+    if (stateVars.length > 1) {
+      var byVar = {}, common = [];
+      stateVars.forEach(function (sv) { byVar[sv] = []; });
+      nodes.forEach(function (n) {
+        var owner = null;
+        for (var i = 0; i < stateVars.length; i++) {
+          if (splitStateCond(n.cond, stateVars[i]).state != null) { owner = stateVars[i]; break; }
+        }
+        if (owner) byVar[owner].push(n); else common.push(n);
+      });
+      var sections = [];
+      if (common.length) {
+        sections.push('<div class="state-machine-bar"><span>Общие реплики</span></div>' +
+          renderInner(buildTree(common, vars), focusKey, vars));
+      }
+      var machineNumber = 0;
+      stateVars.forEach(function (sv) {
+        var machineNodes = byVar[sv];
+        if (!machineNodes.length) return;
+        machineNumber++;
+        var machine = {};
+        for (var k in unit) machine[k] = unit[k];
+        machine.nodes = machineNodes;
+        if (unit.transitions) machine.transitions = unit.transitions.filter(function (tr) { return tr.var === sv; });
+        if (unit.consets) machine.consets = unit.consets.filter(function (tr) { return tr.var === sv; });
+        var graph = renderGraph(machine, focusKey, sv);
+        var body = graph || renderInner(buildTree(machineNodes, vars), focusKey, vars);
+        sections.push('<div class="state-machine-bar"><span>Независимый сценарий ' + machineNumber + '</span></div>' + body);
+      });
+      if (sections.length) return dynamicNote + '<div class="flow">' + sections.join('') + '</div>';
+    }
+    var g = renderGraph(unit, focusKey, stateVars[0]);
+    if (g) return dynamicNote + '<div class="flow">' + g + '</div>';
+    return dynamicNote + '<div class="flow">' + renderInner(buildTree(nodes, vars), focusKey, vars) + '</div>';
   }
 
   function setApplies(setCond, lineCond) {
@@ -1530,6 +1752,7 @@
     if (!curDlg) return;
     var unitId = resolveUnitId(key);
     var unit = unitId ? curDlg.units[unitId] : null;
+    currentUnitId = unitId || null;
     currentUnitObj = unit ? unit.obj : null;
     var focus = null;
     if (unit) { for (var i = 0; i < unit.nodes.length; i++) { if (unit.nodes[i].key === key) { focus = unit.nodes[i]; break; } } }
