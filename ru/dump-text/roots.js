@@ -656,6 +656,10 @@
 
   function wordRe(w) { return new RegExp('\\b' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b'); }
 
+  function stripOptMeta(c) {
+    return String(c || '').replace(/\u0001[A-Za-z0-9_]+(?:\u0002[A-Za-z0-9_]+)*/g, '');
+  }
+
 
   function condInfo(c, vars) {
     var flags = {};
@@ -666,8 +670,8 @@
     }
     var choices = [], m, re = /global\.choice\s*==\s*(\d+)/g;
     while ((m = re.exec(c))) choices.push(Number(m[1]));
-    var optKey = null, bi = c.indexOf('\u0001');
-    if (bi >= 0) optKey = c.slice(bi + 1);
+    var om = String(c).match(/\u0001([A-Za-z0-9_]+(?:\u0002[A-Za-z0-9_]+)*)/);
+    var optKey = om ? om[1] : null;
     return { flags: Object.keys(flags).map(Number).sort(function (a, b) { return a - b; }), choices: choices, optKey: optKey };
   }
 
@@ -702,10 +706,16 @@
   document.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('.flag-bulb'); if (b) { e.preventDefault(); e.stopPropagation(); openFlagDoc(Number(b.getAttribute('data-flagdoc'))); } });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { var ov = document.getElementById('flagdocOverlay'); if (ov && ov.style.display !== 'none') { e.stopImmediatePropagation(); closeFlagDoc(); } } });
   function optText(key) {
-    var row = key && (keyText[key] || dlgText[key]);
-    if (!row) return '';
-    var t = cleanText(row[1]) || cleanText(row[2]);
-    return t.replace(/\s*\n\s*/g, ' ').replace(/\s{2,}/g, ' ').trim();
+    if (!key) return '';
+    var labels = [], seen = {};
+    String(key).split('\u0002').forEach(function (oneKey) {
+      var row = keyText[oneKey] || dlgText[oneKey];
+      if (!row) return;
+      var t = cleanText(row[1]) || cleanText(row[2]);
+      t = t.replace(/\s*\n\s*/g, ' ').replace(/\s{2,}/g, ' ').trim();
+      if (t && !seen[t]) { seen[t] = 1; labels.push(t); }
+    });
+    return labels.join(' / ');
   }
 
   function condLabel(c, vars) {
@@ -720,7 +730,7 @@
       });
     }
     if (info.flags.length) {
-      var bare = c.split('\u0001')[0];
+      var bare = stripOptMeta(c);
       var sm = bare.match(/^\s*(?:global\.flag\[|scr_flag_get\()\s*(\d+)\s*[\])]?\s*(==|!=|>=|<=|>|<)\s*(-?\d+(?:\.\d+)?)\s*$/);
       if (sm) {
         var mean = flagMeaning(sm[1]);
@@ -829,7 +839,7 @@
     return 'Показывается, только если: ' + head;
   }
   function humanizeCondShort(c) {
-    var s = String(c || '').split('\u0001')[0].trim();
+    var s = stripOptMeta(c).trim();
     if (!s) return '';
     s = s.replace(/global\.flag\[(\d+)\]/g, 'флаг $1').replace(/scr_flag_get\(\s*(\d+)\s*\)/g, 'флаг $1');
     s = s.replace(/global\./g, '').replace(/scr_/g, '');
@@ -843,7 +853,8 @@
   function currentMenus() {
     if (typeof window === 'undefined') return [];
     if (window.__CHOICES_UNITS && currentUnitId && window.__CHOICES_UNITS[currentUnitId]) {
-      return window.__CHOICES_UNITS[currentUnitId];
+      var unitMenus = window.__CHOICES_UNITS[currentUnitId];
+      if (unitMenus.length) return unitMenus;
     }
     if (window.__CHOICES && currentUnitObj && window.__CHOICES[currentUnitObj]) {
       return window.__CHOICES[currentUnitObj];
@@ -881,7 +892,11 @@
     if (wantedState != null) {
       var exact = menus.filter(function (m) { return m.state === wantedState; });
       if (exact.length) pool = exact;
-      else if (contextLine == null) return [];
+      else {
+        var unbound = menus.filter(function (m) { return m.state == null; });
+        if (unbound.length) pool = unbound;
+        else if (contextLine == null) return [];
+      }
     }
     var best = null;
     for (var i = 0; i < pool.length; i++) {
@@ -949,7 +964,7 @@
       var ot = optText(info.optKey) || choicesLookup(info.choices[0]);
       return { groupKey: 'choice', kind: 'choice', head: 'Выбор игрока', value: ot ? '«' + ot + '»' : ('значение ' + info.choices[0]), choiceVal: info.choices[0], optKey: info.optKey };
     }
-    var bare = c.split('\u0001')[0];
+    var bare = stripOptMeta(c);
     var sm = bare.match(/^\s*(?:global\.flag\[|scr_flag_get\()\s*(\d+)\s*[\])]?\s*(==|!=|>=|<=|>|<)\s*(-?\d+(?:\.\d+)?)\s*$/);
     if (sm) {
       var mean = flagMeaning(sm[1]);
@@ -1013,8 +1028,6 @@
   }
 
   function splitCond(c) {
-    var opt = '', bi = c.indexOf('\u0001');
-    if (bi >= 0) { opt = c.slice(bi); c = c.slice(0, bi); }
     var parts = [], depth = 0, cur = '';
     for (var i = 0; i < c.length; i++) {
       var ch = c[i];
@@ -1026,13 +1039,14 @@
     if (cur.trim()) parts.push(cur.trim());
 
     parts = parts.filter(function (p) { return p && !/^(?:global\.flag\[\d+\]|scr_flag_get\(\s*\d+\s*\))\s*>=\s*0$/.test(p); });
-    if (opt) { for (var j = 0; j < parts.length; j++) { if (/global\.choice/.test(parts[j])) { parts[j] += opt; break; } } }
-    return parts;
+    var seen = {}, unique = [];
+    parts.forEach(function (p) { if (!seen[p]) { seen[p] = 1; unique.push(p); } });
+    return unique;
   }
 
 
   function isFlattenable(c) {
-    var bare = (c || '').split('\u0001')[0].trim();
+    var bare = stripOptMeta(c).trim();
     if (/^!?d_ex\(\)$/.test(bare)) return true;
     if (/^!?i_ex\b/.test(bare)) return true;
     if (/^global\.interact\s*(==|!=)\s*-?\d+$/.test(bare)) return true;
@@ -1094,7 +1108,7 @@
     return world ? (world + ' — ' + rn) : rn;
   }
   function humanizeCond(c) {
-    c = c.split('\u0001')[0].trim();
+    c = stripOptMeta(c).trim();
     if (/^!?d_ex\(\)$/.test(c)) return null;
     if (/^global\.interact\s*==\s*0$/.test(c)) return null;
     if (/^global\.choice\s*!=\s*-1$/.test(c)) return null;
@@ -1162,7 +1176,7 @@
         gmap[gk].items.push({ value: d.value, op: d.op, val: d.val, choiceVal: d.choiceVal, optKey: d.optKey, flagNum: gmap[gk].flag, branches: [ch] });
         lastGroup = gmap[gk];
       } else {
-        var bareCond = (ch.cond || '').split('\u0001')[0].trim();
+        var bareCond = stripOptMeta(ch.cond).trim();
         var vc = bareCond.match(/^([A-Za-z_]\w*(?:\.\w+)*)\s*(==|!=|>=|<=|>|<)\s*(-?\d+(?:\.\d+)?)\s*$/);
         if (vc && !/^global\.(choice|flag)\b/.test(vc[1]) && !/con$/.test(vc[1]) && vc[1] !== 'myinteract' && vc[1] !== 'talked') {
           var vgk = 'var:' + vc[1];
@@ -1359,7 +1373,7 @@
     }
     function scan(conds) {
       (conds || []).forEach(function (c) {
-        var bare = c.split('\u0001')[0];
+        var bare = stripOptMeta(c);
         var re = /\b([A-Za-z_]\w*)\s*==\s*(-?\d+(?:\.\d+)?)/g;
         var m;
         while ((m = re.exec(bare))) {
@@ -1404,7 +1418,7 @@
     var re = new RegExp('^' + sv + '\\s*==\\s*(-?\\d+(?:\\.\\d+)?)$');
     (cond || []).forEach(function (c) {
       splitCond(c).forEach(function (atom) {
-        var bare = atom.split('\u0001')[0].trim();
+        var bare = stripOptMeta(atom).trim();
         var m = bare.match(re);
         if (m) st = Number(m[1]); else rest.push(atom);
       });
@@ -1438,9 +1452,10 @@
   function exitGuardKind(guard, vars) {
     for (var i = 0; i < guard.length; i++) {
       var c = guard[i];
-      var bare = c.split('\u0001')[0];
+      var bare = stripOptMeta(c);
       var info = condInfo(c, vars);
-      if (info.choices.length) return { kind: 'choice', val: info.choices[0], optKey: info.optKey };
+      var choiceEq = bare.match(/^\s*global\.choice\s*==\s*(\d+)\s*$/);
+      if (choiceEq) return { kind: 'choice', val: Number(choiceEq[1]), optKey: info.optKey };
       var choiceNot = bare.match(/^\s*global\.choice\s*!=\s*(\d+)\s*$/);
       if (choiceNot) {
         var opts = choiceOptionsAt(null, currentStateNum), alternatives = [];
@@ -1455,7 +1470,7 @@
       if (sm) return { kind: 'flag', f: Number(sm[1]), op: sm[2], val: sm[3] };
     }
     for (var j = guard.length - 1; j >= 0; j--) {
-      var bj = guard[j].split('\u0001')[0].trim();
+      var bj = stripOptMeta(guard[j]).trim();
       if (!bj) continue;
       if (bj === 'иначе') return { kind: 'cond', isElse: true, distinct: null };
       if (/^global\.choice\b/.test(bj)) continue;
@@ -1487,7 +1502,7 @@
     h += '<ul class="kids fork-' + kind + '">';
     items.forEach(function (it) {
       var debugAttrs = it.choiceVal != null ? ' data-choice-val="' + escapeHtml(String(it.choiceVal)) + '"' + (it.optKey ? ' data-opt-key="' + escapeHtml(it.optKey) + '"' : '') : '';
-      h += '<li' + debugAttrs + '><div class="kid-label">' + escapeHtml(it.label) + '</div><div class="flow">' + (it.body || '<div class="col-end">Ветка заканчивается после выбора</div>') + '</div></li>';
+      h += '<li' + debugAttrs.replace(/\u0002/g, '|') + '><div class="kid-label">' + escapeHtml(it.label) + '</div><div class="flow">' + (it.body || '<div class="col-end">Ветка заканчивается после выбора</div>') + '</div></li>';
     });
     h += '</ul>';
     return h;
@@ -1542,6 +1557,18 @@
         condExits = remainingCondExits;
       }
     }
+    var choiceMenuLine = null;
+    if (choiceExits.length) {
+      var usedChoices = {};
+      choiceExits.forEach(function (x) {
+        if (x.g.val != null) usedChoices[String(x.g.val)] = 1;
+        if (x.e.line != null && (choiceMenuLine == null || x.e.line < choiceMenuLine)) choiceMenuLine = x.e.line;
+      });
+      var knownOptions = choiceOptionsAt(choiceMenuLine, (typeof N === 'number' ? N : null));
+      knownOptions.forEach(function (label, idx) {
+        if (label && !usedChoices[String(idx)]) choiceExits.push({ e: { to: -1, line: choiceMenuLine }, g: { kind: 'choice', val: idx, label: '«' + label + '»' } });
+      });
+    }
     if (choiceExits.length) {
       var ct = {}; choiceExits.forEach(function (x) { ct[x.e.to] = 1; });
       if (Object.keys(ct).length === 1) { plain.push({ to: choiceExits[0].e.to }); choiceExits = []; }
@@ -1566,8 +1593,8 @@
       rendered.__f = (rendered.__f || 0) + 1;
       html += forkHTML('choice', 'Выбор игрока', choiceExits.length, choiceExits.map(function (x) {
         var first = x.items[0], g = first.g;
-        var stateOpts = choiceOptionsAt(null, (typeof N === 'number' ? N : null));
-        var ot = (stateOpts && stateOpts[g.val]) || g.label || optText(g.optKey) || choicesLookup(g.val);
+        var stateOpts = choiceOptionsAt(choiceMenuLine, (typeof N === 'number' ? N : null));
+        var ot = g.label || optText(g.optKey) || (stateOpts && stateOpts[g.val]) || choicesLookup(g.val, choiceMenuLine);
         var lab = g.label || (ot ? '«' + ot + '»' : 'значение ' + g.val);
         var useful = x.items.filter(function (it) { return stateHasText(states, it.e.to); });
         if (!useful.length) useful = [first];
@@ -1744,7 +1771,7 @@
 
   function mscOf(cond) {
     var arr = cond || [], m;
-    for (var i = 0; i < arr.length; i++) { m = arr[i].split('\u0001')[0].match(/(?:global\.msc|arg0|argument0)\s*==\s*(\d+)/); if (m) return m[1]; }
+    for (var i = 0; i < arr.length; i++) { m = stripOptMeta(arr[i]).match(/(?:global\.msc|arg0|argument0)\s*==\s*(\d+)/); if (m) return m[1]; }
     return null;
   }
 
