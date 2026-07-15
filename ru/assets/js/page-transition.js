@@ -1,6 +1,26 @@
 (function () {
+  if (!document.getElementById('mobile-site-nav-css')) {
+    var mobileNavCss = document.createElement('link');
+    mobileNavCss.id = 'mobile-site-nav-css';
+    mobileNavCss.rel = 'stylesheet';
+    mobileNavCss.href = '/assets/css/mobile-site-nav.css?v=20260715-1';
+    document.head.appendChild(mobileNavCss);
+  }
+
   var de = document.documentElement;
   var FADE = 450;
+  var GIF_HISTORY_KEY = 'pt-gif-history-v1';
+  var GIF_HISTORY_SIZE = 5;
+  var BLOCKED_GIFS = {
+    '04-spamton-1-n-5D5Qn7h03FrD2KiY.gif': true,
+    '04-spamton-1-n-5D5Qn7h03FrD2KiY-8eee18.gif': true,
+    '06-spamton-3-n-LbXtgvThkyV7r1SU.gif': true,
+    '06-spamton-3-n-LbXtgvThkyV7r1SU-6ea9d1.gif': true,
+    '25-mettaton-1-n-nfH9RCzvDWQURU2R.gif': true,
+    '25-mettaton-1-n-nfH9RCzvDWQURU2R-bb9415.gif': true,
+    '31-queen-1-n-qWNP1ZH6tD6QbRQN.gif': true,
+    '31-queen-1-n-qWNP1ZH6tD6QbRQN-61114e.gif': true
+  };
 
 
   var base = '';
@@ -15,17 +35,61 @@
     if (s && s.src) base = s.src.replace(/assets\/js\/page-transition\.js(?:\?.*)?$/, '');
   } catch (e) {}
 
+  function gifName(src) {
+    return String(src || '').split(/[\\/]/).pop();
+  }
+
+  function readGifHistory() {
+    try {
+      var value = JSON.parse(sessionStorage.getItem(GIF_HISTORY_KEY) || '[]');
+      if (!Array.isArray(value)) return [];
+      var clean = [];
+      for (var i = 0; i < value.length; i++) {
+        var name = gifName(value[i]);
+        if (name && clean.indexOf(name) === -1) clean.push(name);
+      }
+      return clean.slice(-GIF_HISTORY_SIZE);
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function rememberGif(name, history) {
+    var next = history.slice();
+    var oldIndex = next.indexOf(name);
+    if (oldIndex !== -1) next.splice(oldIndex, 1);
+    next.push(name);
+    next = next.slice(-GIF_HISTORY_SIZE);
+    try { sessionStorage.setItem(GIF_HISTORY_KEY, JSON.stringify(next)); } catch (_) {}
+  }
+
   function injectGif() {
     if (document.getElementById('pt-gif')) return;
     var list = window.__PTGIFS;
     if (!list || !list.length) return;
-    var pick = list[(Math.random() * list.length) | 0];
+    var allowed = [];
+    for (var i = 0; i < list.length; i++) {
+      var name = String(list[i]).split('/').pop();
+      if (!BLOCKED_GIFS[name]) allowed.push(list[i]);
+    }
+    if (!allowed.length) return;
+    var history = readGifHistory();
+    var choices = [];
+    for (var j = 0; j < allowed.length; j++) {
+      if (history.indexOf(gifName(allowed[j])) === -1) choices.push(allowed[j]);
+    }
+    if (!choices.length) {
+      history = [];
+      choices = allowed.slice();
+    }
+    var pick = choices[(Math.random() * choices.length) | 0];
+    rememberGif(gifName(pick), history);
     var img = document.createElement('img');
     img.id = 'pt-gif';
     img.alt = '';
     img.setAttribute('aria-hidden', 'true');
     img.src = base + pick;
-    (document.body || de).appendChild(img);
+    de.appendChild(img);
   }
   if (document.body) injectGif();
   else document.addEventListener('DOMContentLoaded', injectGif);

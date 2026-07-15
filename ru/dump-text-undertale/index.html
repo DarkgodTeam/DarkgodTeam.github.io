@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="apple-touch-icon" href="../save-editor/game-sprites/spr_heart_0.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#06142b">
+  <script>try{if(localStorage.getItem('undertale-dump-wallpaper-dim-v1')==='1')document.documentElement.classList.add('wallpaper-dim')}catch(_){}</script>
+  <title>Дамп текста — UNDERTALE</title>
+  <meta name="description" content="Дамп текста UNDERTALE 1.08: код строки, английский, японский и два русских командных перевода с поиском и фильтрами.">
+  <link rel="preload" href="../save-editor/fonts/8bitoperator_jve_v2_01.ttf" as="font" type="font/ttf" crossorigin>
+  <style>
+    @font-face { font-family:'UTBody'; src:url('../save-editor/fonts/8bitoperator_jve_v2_01.ttf') format('truetype'); font-display:swap; }
+    @font-face { font-family:'UTBold'; src:url('../save-editor/fonts/8bitOperatorPlus-Bold.ttf') format('truetype'); font-weight:bold; font-display:swap; }
+    @font-face { font-family:'UTMono'; src:url('../save-editor/fonts/PixelOperatorMono.woff2') format('woff2'); font-display:swap; }
+    :root { --bg:#050505; --box:#000; --line:#fff; --text:#fff; --dim:#aaa; --red:#ff3030; --yellow:#fff200; --green:#6dff78; --cyan:#51d7ff; --purple:#d89bff; --orange:#ff9a3c; --pink:#ff82cf; }
+    * { box-sizing:border-box; }
+    html { min-height:100%; background:var(--bg); }
+    html,body { margin:0; min-height:100%; color:var(--text); font-family:'UTBody',monospace; -webkit-font-smoothing:none; }
+    body { position:relative; background:radial-gradient(ellipse at 50% -10%, rgba(120,0,0,.28), transparent 46%), #050505; }
+    body::before { content:""; position:fixed; inset:0; z-index:-1; pointer-events:none; opacity:.18; background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px); background-size:8px 8px; }
+    a { color:inherit; text-decoration:none; }
+    button,input,select { font:inherit; color:inherit; }
+    * { scrollbar-width:thin; scrollbar-color:#555 #090909; }
+    ::-webkit-scrollbar { width:12px; height:12px; }
+    ::-webkit-scrollbar-track { background:#090909; }
+    ::-webkit-scrollbar-thumb { background:#444; border:2px solid #090909; }
+    .site-nav { width:100%; background:#0a0a0f; position:relative; z-index:60; font-family:'UTBold',monospace; font-size:18px; border-bottom:4px solid #000; }
+    .site-nav>div { width:100%; position:relative; }
+    .site-nav ul { display:flex; align-items:center; justify-content:center; gap:16px; height:48px; width:min(100%,672px); margin:0 auto; padding:0; list-style:none; }
+    .site-nav li { flex:0 0 auto; }
+    .site-nav a { display:inline-block; white-space:nowrap; padding:0 8px; font-size:18px; color:#fff; text-transform:uppercase; text-shadow:2px 2px 0 #000; }
+    .site-nav a:hover,.site-nav a.current { color:var(--yellow); }
+    .wrap { max-width:1560px; margin:0 auto; padding:26px 16px 70px; }
+    .ut-box { background:var(--box); border:5px solid var(--line); box-shadow:0 0 0 4px #000,0 0 22px rgba(255,0,0,.12); padding:18px 20px; }
+    .ut-box+.ut-box { margin-top:20px; }
+    .hero { display:flex; align-items:center; gap:18px; }
+    .soul { width:34px; height:32px; flex:0 0 auto; background:url('../save-editor/game-sprites/spr_heart_0.png') center/contain no-repeat; filter:drop-shadow(0 0 9px rgba(255,48,48,.7)); animation:pulse 1.4s ease-in-out infinite; }
+    @keyframes pulse { 50% { transform:scale(1.14); } }
+    h1 { margin:0; font-weight:normal; font-size:46px; line-height:1; letter-spacing:1px; text-shadow:3px 3px 0 #000; }
+    .sub { color:var(--yellow); font-size:18px; margin-top:8px; }
+    .sub b { color:var(--dim); font-weight:normal; }
+    .panel-title { color:var(--yellow); font-size:13px; text-transform:uppercase; letter-spacing:.14em; margin-bottom:12px; }
+    .game-switch { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .game-switch .label { color:var(--dim); font-size:17px; margin-right:4px; }
+    .game-link { display:inline-flex; min-height:44px; align-items:center; border:3px solid #555; padding:7px 14px; font-family:'UTBold',monospace; font-size:16px; }
+    .game-link:hover { border-color:#fff; color:#fff; }
+    .game-link.deltarune { border-color:#fff; color:#fff; background:#181820; box-shadow:0 0 12px rgba(255,255,255,.26); }
+    .game-link.deltarune:hover,.game-link.deltarune.current { box-shadow:0 0 17px rgba(255,255,255,.48); }
+    .game-link.undertale:hover,.game-link.undertale.current { border-color:#ff5353; color:#ff5353; background:#260606; box-shadow:0 0 15px rgba(255,48,48,.38); }
+    .searchbar { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+    .field { flex:1 1 320px; display:flex; align-items:center; gap:10px; background:#000; border:3px solid #fff; padding:0 14px; height:52px; min-width:0; }
+    .field:focus-within { border-color:var(--yellow); box-shadow:0 0 12px rgba(255,242,0,.2); }
+    .ficon { width:20px;height:18px;flex:0 0 auto;background:var(--red);-webkit-mask:url('../save-editor/game-sprites/spr_heart_0.png') center/contain no-repeat;mask:url('../save-editor/game-sprites/spr_heart_0.png') center/contain no-repeat;image-rendering:pixelated; }
+    .field input { flex:1; min-width:0; height:100%; background:transparent; border:0; outline:0; font-size:22px; }
+    .field input::placeholder { color:#686868; }
+    .clear { border:0; background:transparent; color:#aaa; cursor:pointer; font-size:27px; }
+    .clear:hover { color:var(--red); }
+    .btn { height:52px; padding:0 18px; background:#000; border:3px solid #fff; cursor:pointer; font-family:'UTBold',monospace; font-size:16px; text-transform:uppercase; }
+    .btn:hover { color:var(--yellow); border-color:var(--yellow); }
+    .opt-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:18px 28px; margin-top:18px; }
+    .mode-groups { display:contents; }
+    .opt-group { display:flex; flex-direction:column; gap:10px; }
+    .opt-group>.label { color:var(--dim); font-size:13px; text-transform:uppercase; letter-spacing:.1em; }
+    .chips { display:flex; gap:9px; flex-wrap:wrap; }
+    .chip { position:relative; display:inline-flex; align-items:center; gap:8px; min-height:39px; padding:7px 12px; background:#000; border:3px solid #444; color:var(--dim); cursor:pointer; user-select:none; }
+    .chip input { position:absolute; opacity:0; pointer-events:none; }
+    .chip:hover { color:#fff; border-color:#777; }
+    .chip.on { color:var(--yellow); border-color:var(--yellow); background:#171600; }
+    .chip[data-col="a"].on { color:var(--green); border-color:var(--green); background:#071a09; }
+    .chip[data-col="b"].on,.chip[data-scope="b"].on { color:var(--cyan); border-color:var(--cyan); background:#07171d; }
+    .chip[data-col="c"].on,.chip[data-scope="c"].on { color:var(--purple); border-color:var(--purple); background:#190b20; }
+    .chip[data-col="d"].on,.chip[data-scope="d"].on { color:var(--orange); border-color:var(--orange); background:#1c1206; }
+    .chip[data-col="e"].on,.chip[data-scope="e"].on { color:var(--pink); border-color:var(--pink); background:#1c0c17; }
+    .chip[data-mode="case"].on { color:#ff9a3c; border-color:#ff9a3c; background:#1c1206; }
+    .chip[data-mode="word"].on { color:var(--green); border-color:var(--green); background:#071a09; }
+    .chip[data-mode="regex"].on { color:var(--purple); border-color:var(--purple); background:#190b20; }
+    .chip[data-mode="noUnused"].on { color:#ff83dc; border-color:#ff83dc; background:#210a0a; }
+    .chip[data-mode="noDup"].on { color:var(--yellow); border-color:var(--yellow); background:#191800; }
+    .opt-note { margin-top:16px; padding:10px 13px; background:rgba(2,10,24,.84); border:2px solid #315775; border-left:4px solid #72efff; }
+    .opt-note .opt-note-h { margin:0; color:#72efff; cursor:pointer; font-size:12px; text-transform:uppercase; letter-spacing:.12em; }
+    .opt-note .opt-note-h::marker { color:#72efff; }
+    .opt-note[open] .opt-note-h { margin-bottom:9px; }
+    .opt-note ul { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:6px 22px; margin:0; padding:0; list-style:none; }
+    .opt-note li { color:var(--dim); font-size:14px; line-height:1.45; }
+    .opt-note li b { font-family:'UTBold',monospace; }
+    .opt-note b.n-columns { color:var(--cyan); }
+    .opt-note b.n-scope { color:var(--green); }
+    .opt-note b.n-case { color:#ff9a3c; }
+    .opt-note b.n-word { color:var(--green); }
+    .opt-note b.n-regex { color:var(--purple); }
+    .opt-note b.n-unused { color:#ff83dc; }
+    .opt-note b.n-dup { color:var(--yellow); }
+    .opt-note b.n-teams { color:var(--pink); }
+    .err { display:none; margin-top:12px; padding:10px 14px; color:#000; background:var(--yellow); border:3px solid #000; }
+    .object-filter { margin-top:16px; padding:14px; border:2px solid #315775; background:rgba(2,10,24,.76); }
+    .object-filter-title { display:flex; align-items:center; gap:10px; flex-wrap:wrap; color:#9ebbd1; font-size:13px; text-transform:uppercase; letter-spacing:.1em; }
+    .object-active { color:#d8edf8; text-transform:none; letter-spacing:0; }
+    .object-active.on { color:#75f4df; text-shadow:0 0 9px rgba(85,229,255,.35); }
+    .object-controls { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:10px; }
+    .object-field { display:flex; align-items:center; flex:1 1 360px; min-width:220px; height:46px; border:2px solid #376c8d; background:rgba(2,10,25,.88); }
+    .object-field>span { padding:0 11px; color:#75f4df; font-family:'UTBold',monospace; }
+    .object-field input { width:100%; min-width:0; height:100%; padding:0 12px; border:0; border-left:1px solid #315775; outline:0; background:transparent; color:#fff; font-size:17px; }
+    .object-field:focus-within { border-color:#69eaff; box-shadow:0 0 15px rgba(85,229,255,.25); }
+    .object-query-clear { display:grid; place-items:center; flex:0 0 31px; width:31px; height:31px; margin-right:6px; padding:0; border:2px solid #ff5b6d; border-radius:50%; background:#310814; color:#fff; cursor:pointer; font-size:0; line-height:0; box-shadow:0 0 10px rgba(255,66,91,.35); }
+    .object-query-clear::before { content:"×"; display:grid; place-items:center; width:100%; height:100%; font:20px/1 Arial,sans-serif; transform:translateY(-.5px); }
+    .object-query-clear:hover,.object-query-clear:focus { outline:none; background:#ff5368; border-color:#fff; color:#07101d; box-shadow:0 0 15px rgba(255,83,104,.7); }
+    .object-btn { min-height:46px; padding:7px 13px; border:2px solid #55768e; background:rgba(2,10,25,.9); color:#d7e9f3; cursor:pointer; font-family:'UTBold',monospace; }
+    .object-btn.primary { color:#75f4df; border-color:#75f4df; }
+    .object-btn:hover { color:#03101c; background:#e9f9ff; border-color:#e9f9ff; }
+    .object-btn.primary:hover { background:#75f4df; border-color:#75f4df; }
+    .object-btn:disabled { opacity:.42; cursor:default; color:#55768e; background:rgba(2,10,25,.9); border-color:#55768e; }
+    .object-message { margin-top:9px; color:#7898ae; font-size:14px; }
+    .object-message.error { color:#ff7e8b; }
+    .meta-row { display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; margin:22px 0 12px; }
+    .count { font-size:19px; }
+    .count b { color:var(--yellow); font-weight:normal; }
+    .count .tot { color:var(--dim); }
+    .perpage { display:flex; align-items:center; gap:10px; color:var(--dim); font-size:15px; text-transform:uppercase; }
+    .perpage select { background:#000; border:3px solid #fff; height:42px; padding:0 10px; font-size:17px; }
+    .table-wrap { border:5px solid #fff; box-shadow:0 0 0 4px #000,0 0 22px rgba(0,0,0,.8); background:#000; }
+    .table-scroll { overflow:auto; max-height:calc(100vh - 90px); }
+    table { border-collapse:collapse; width:100%; min-width:1420px; table-layout:fixed; }
+    table.without-id { min-width:0; }
+    table.without-id th { width:auto; }
+    th,td { text-align:left; vertical-align:top; padding:11px 14px; border-bottom:2px solid #202020; border-right:2px solid #202020; overflow-wrap:anywhere; }
+    th { position:sticky; top:0; z-index:2; background:#151515; border-bottom:3px solid #fff; font-family:'UTBold',monospace; font-size:15px; text-transform:uppercase; letter-spacing:.08em; }
+    th:nth-child(1) { width:18%; color:var(--green); }
+    th:nth-child(2) { width:19%; color:var(--cyan); }
+    th:nth-child(3) { width:19%; color:var(--purple); }
+    th:nth-child(4) { width:22%; color:var(--orange); }
+    th:nth-child(5) { width:22%; color:var(--pink); }
+    td { font-size:18px; line-height:1.42; }
+    tbody tr:nth-child(even) td { background:rgba(255,255,255,.022); }
+    tbody tr:hover td { background:rgba(255,242,0,.055); }
+    .sid { font-family:'UTMono',monospace; color:var(--green); font-size:14px; word-break:break-all; }
+    .td-c { font-family:'UTBody','Yu Gothic','Meiryo',sans-serif; }
+    .empty-cell { color:#555; }
+    .hidden-col { display:none; }
+    mark { background:var(--yellow); color:#000; padding:0 2px; }
+    .loading,.no-results { padding:50px 16px; text-align:center; color:var(--dim); font-size:21px; }
+    .no-results::before { content:"* "; color:var(--red); }
+    .pager { display:flex; justify-content:center; align-items:center; gap:8px; flex-wrap:wrap; margin-top:18px; }
+    .page-btn { min-width:42px; height:40px; padding:0 10px; border:3px solid #555; background:#000; cursor:pointer; }
+    .page-btn:hover,.page-btn.current { border-color:var(--yellow); color:var(--yellow); }
+    .page-btn.current { background:#191800; }
+    .page-btn:disabled { opacity:.35; cursor:default; }
+    .page-gap { color:#777; }
+    @media (max-width:720px) {
+      .site-nav ul { justify-content:flex-start; gap:0; padding:0 4px; overflow-x:auto; }
+      .site-nav a { padding:0 5px; font-size:11px; }
+      .wrap { padding:16px 10px 52px; }
+      .ut-box { border-width:4px; padding:14px; }
+      .hero { gap:12px; }
+      .soul { width:28px; height:26px; }
+      h1 { font-size:31px; }
+      .sub { font-size:15px; }
+      .game-switch .label { width:100%; }
+      .game-link { flex:1 1 130px; justify-content:center; }
+      .opt-row { grid-template-columns:1fr; }
+      .opt-note ul { grid-template-columns:minmax(0,1fr); }
+      .meta-row { align-items:flex-start; }
+      th,td { padding:9px 10px; }
+      td { font-size:16px; }
+      .sid { font-size:12px; }
+      .table-scroll { max-height:none; }
+    }
+    @media (max-width:440px) {
+      .site-nav a { font-size:9px; padding:0 3px; }
+      .hero { align-items:flex-start; }
+      h1 { font-size:27px; }
+      .sub { line-height:1.35; }
+      .table-scroll { overflow:visible; }
+      table,thead,tbody,tr,th,td { display:block; width:100%; min-width:0; }
+      thead { display:none; }
+      tr { border-bottom:4px solid #fff; }
+      td { border-right:0; }
+      td::before { display:block; margin-bottom:5px; color:#777; font-family:'UTBold',monospace; font-size:11px; text-transform:uppercase; letter-spacing:.08em; }
+      td:nth-child(1)::before { content:"ID строки"; }
+      td:nth-child(2)::before { content:"English"; color:var(--cyan); }
+      td:nth-child(3)::before { content:"日本語"; color:var(--purple); }
+      td:nth-child(4)::before { content:"C-arth97"; color:var(--orange); }
+      td:nth-child(5)::before { content:"Tales&Stories Team"; color:var(--pink); }
+      td.hidden-col { display:none; }
+    }
+
+    :root {
+      --bg:#040a19;
+      --box:rgba(3,10,25,.92);
+      --line:#72efff;
+      --text:#f5fcff;
+      --dim:#9ab8d0;
+      --red:#ff6fda;
+      --yellow:#72efff;
+      --green:#7ff9de;
+      --cyan:#55e5ff;
+      --purple:#ff8bec;
+      --orange:#9eb9ff;
+      --pink:#ff70d8;
+      --deep:#06142b;
+      --deep-2:#0a2340;
+    }
+    html { background:#040a19; }
+    html,body { color:var(--text); }
+    body {
+      isolation:isolate;
+      background:#040a19;
+    }
+    body::before {
+      opacity:1;
+      background-image:url('assets/wallpaper-undertale-dump.png');
+      background-size:100% 100%;
+      background-position:center center;
+      background-repeat:no-repeat;
+      filter:none;
+      transition:filter .34s ease;
+    }
+    body::after {
+      content:"";
+      position:fixed;
+      inset:0;
+      z-index:-1;
+      pointer-events:none;
+      background:
+        radial-gradient(ellipse at 50% 42%,transparent 25%,rgba(1,5,18,.24) 72%,rgba(1,4,14,.58) 100%),
+        linear-gradient(90deg,rgba(0,10,28,.28),transparent 28%,transparent 72%,rgba(23,3,31,.22));
+      opacity:0;
+      transition:opacity .34s ease;
+    }
+    html.wallpaper-dim body::before {
+      filter:saturate(1.08) brightness(.66);
+    }
+    html.wallpaper-dim body::after { opacity:1; }
+    ::selection { color:#03101c; background:#7cf2ff; }
+    * { scrollbar-color:#257f9f #051020; }
+    ::-webkit-scrollbar-track { background:#051020; }
+    ::-webkit-scrollbar-thumb { background:linear-gradient(#277da1,#8c3f91); border:2px solid #051020; }
+
+    .site-nav {
+      background:linear-gradient(180deg,rgba(3,9,25,.98),rgba(4,14,34,.95));
+      border-bottom:1px solid rgba(91,224,255,.62);
+      box-shadow:0 5px 22px rgba(0,0,0,.45),0 1px 0 rgba(255,112,216,.16) inset;
+      backdrop-filter:blur(10px);
+    }
+    .site-nav a { color:#d9edf8; text-shadow:2px 2px 0 #020714; transition:color .14s,text-shadow .14s; }
+    .site-nav a:hover,.site-nav a.current { color:#78f3ff; text-shadow:0 0 10px rgba(85,229,255,.65),2px 2px 0 #020714; }
+
+    .wrap { padding-top:32px; }
+    .ut-box {
+      position:relative;
+      overflow:hidden;
+      background:
+        linear-gradient(135deg,rgba(7,28,52,.94),rgba(3,10,27,.94) 58%,rgba(23,8,39,.9));
+      border:2px solid rgba(104,232,255,.76);
+      box-shadow:
+        0 0 0 1px rgba(255,112,216,.12) inset,
+        0 0 0 4px rgba(1,5,16,.7),
+        0 18px 45px rgba(0,0,0,.46),
+        0 0 25px rgba(77,217,255,.13);
+      backdrop-filter:blur(10px) saturate(1.18);
+      transition:border-color .18s,box-shadow .18s;
+    }
+    .ut-box:hover {
+      border-color:rgba(126,242,255,.95);
+      box-shadow:0 0 0 1px rgba(255,112,216,.2) inset,0 0 0 4px rgba(1,5,16,.72),0 18px 45px rgba(0,0,0,.5),0 0 29px rgba(77,217,255,.19);
+    }
+    .hero {
+      min-height:118px;
+      background:
+        linear-gradient(100deg,rgba(6,34,60,.97),rgba(4,14,36,.92) 58%,rgba(72,13,78,.54)),
+        rgba(3,10,25,.94);
+      border-color:#67eaff;
+    }
+    .wallpaper-toggle {
+      margin-left:auto;
+      min-height:42px;
+      padding:7px 13px;
+      border:2px solid #67eaff;
+      background:rgba(2,13,29,.88);
+      color:#9ff5ff;
+      font-family:'UTBold',monospace;
+      font-size:13px;
+      cursor:pointer;
+      box-shadow:none;
+      transition:color .18s ease,background-color .18s ease,border-color .18s ease,box-shadow .18s ease,transform .12s ease;
+    }
+    .wallpaper-toggle:hover,.wallpaper-toggle:focus { outline:none;background:#67eaff;color:#03101c; }
+    .wallpaper-toggle:active { transform:scale(.97); }
+    .wallpaper-toggle[aria-pressed="true"] { color:#ff8ee1;border-color:#ff75d7;background:rgba(42,8,49,.9);box-shadow:0 0 13px rgba(255,112,216,.22); }
+    .soul {
+      background:#67eaff;
+      -webkit-mask:url('../save-editor/game-sprites/spr_heart_0.png') center/contain no-repeat;
+      mask:url('../save-editor/game-sprites/spr_heart_0.png') center/contain no-repeat;
+      filter:drop-shadow(0 0 7px rgba(103,234,255,.78)) drop-shadow(0 0 16px rgba(66,197,255,.34));
+    }
+    h1 { color:#fff; text-shadow:3px 3px 0 #020714,-2px 0 12px rgba(85,229,255,.58),2px 0 15px rgba(255,112,216,.38); }
+    .sub { color:#6eeeff; text-shadow:0 0 9px rgba(85,229,255,.32); }
+    .sub b { color:#b4cce0; }
+    .panel-title {
+      display:flex;
+      align-items:center;
+      gap:8px;
+      color:#7bf2ff;
+      text-shadow:0 0 9px rgba(85,229,255,.35);
+    }
+    .panel-title::before { content:"◆"; color:#ff75dd; font-size:9px; text-shadow:0 0 8px rgba(255,112,216,.8); }
+
+    .game-switch .label,.opt-group>.label,.perpage { color:#9ebbd1; }
+    .game-link,.btn,.field,.perpage select {
+      background:rgba(2,10,25,.88);
+      border-color:#376c8d;
+      box-shadow:0 0 0 1px rgba(89,224,255,.08) inset;
+    }
+    .game-link,.btn { transition:border-color .14s,color .14s,background .14s,box-shadow .14s; }
+    .game-link:hover,.btn:hover { color:#75f1ff; border-color:#69eaff; background:rgba(7,31,50,.94); box-shadow:0 0 14px rgba(85,229,255,.24); }
+    .game-link.deltarune { color:#fff; border-color:#fff; background:rgba(20,25,39,.96); box-shadow:0 0 14px rgba(255,255,255,.3); }
+    .game-link.deltarune:hover,.game-link.deltarune.current { color:#fff; border-color:#fff; box-shadow:0 0 18px rgba(255,255,255,.5); }
+    .game-link.undertale:hover,.game-link.undertale.current { color:#ff5b6d; border-color:#ff5b6d; background:linear-gradient(100deg,rgba(49,8,19,.96),rgba(84,12,42,.78)); box-shadow:0 0 17px rgba(255,66,91,.38); }
+    .game-link.voices:hover,.game-link.voices.current { color:#ffe14d; border-color:#ffe14d; background:rgba(45,42,2,.96); box-shadow:0 0 17px rgba(255,225,77,.34); }
+    .field { border-width:2px; }
+    .field:focus-within { border-color:#67edff; box-shadow:0 0 0 1px rgba(255,112,216,.28),0 0 18px rgba(85,229,255,.28); }
+    .ficon { background:#ff70dc;filter:drop-shadow(0 0 5px rgba(255,112,216,.8)); }
+    .field input::placeholder { color:#698aa4; }
+    .clear { color:#89a9bf; }
+    .clear:hover { color:#ff72dc; text-shadow:0 0 8px rgba(255,112,216,.6); }
+
+    .chip {
+      min-height:40px;
+      color:#a2bbcd;
+      background:rgba(2,10,24,.86);
+      border:2px solid #315775;
+      box-shadow:0 0 0 1px rgba(85,229,255,.04) inset;
+      transition:color .14s,border-color .14s,background .14s,box-shadow .14s,transform .14s;
+    }
+    .chip::before { content:""; width:20px; height:18px; flex:0 0 auto; background:currentColor; -webkit-mask:url('../save-editor/game-sprites/spr_heart_0.png') center/contain no-repeat; mask:url('../save-editor/game-sprites/spr_heart_0.png') center/contain no-repeat; opacity:.22; transition:opacity .12s,filter .12s; }
+    .chip:hover { color:#e9f9ff; border-color:#5ba9c5; background:rgba(6,24,42,.94); transform:translateY(-1px); }
+    .chip.on::before { opacity:1; filter:drop-shadow(0 0 4px currentColor); }
+    .chip[data-col].on,.chip[data-scope].on,.chip[data-mode].on {
+      background:linear-gradient(115deg,rgba(7,32,51,.98),rgba(17,18,45,.96));
+      box-shadow:0 0 12px color-mix(in srgb,currentColor 28%,transparent),0 0 0 1px rgba(255,255,255,.03) inset;
+    }
+    .chip[data-mode="noUnused"].on { color:#ff83dc; border-color:#ff83dc; }
+    .chip[data-mode="noDup"].on { color:#70efff; border-color:#70efff; }
+    .err { background:#8bf4ff; border-color:#08223a; }
+
+    .meta-row {
+      margin-top:25px;
+      padding:12px 14px;
+      background:linear-gradient(90deg,rgba(3,15,34,.88),rgba(14,9,31,.72));
+      border:1px solid rgba(94,210,239,.34);
+      box-shadow:0 10px 25px rgba(0,0,0,.24);
+      backdrop-filter:blur(7px);
+    }
+    .count b { color:#69efff; text-shadow:0 0 10px rgba(85,229,255,.45); }
+    .perpage select:hover,.perpage select:focus { outline:none; border-color:#6beeff; }
+
+    .table-wrap {
+      border:2px solid rgba(102,231,255,.82);
+      background:rgba(2,8,21,.93);
+      box-shadow:0 0 0 4px rgba(1,5,16,.72),0 20px 48px rgba(0,0,0,.52),0 0 28px rgba(69,215,255,.16),0 0 13px rgba(255,112,216,.1) inset;
+      backdrop-filter:blur(9px) saturate(1.08);
+    }
+    th,td { border-bottom-color:#163650; border-right-color:#14314b; }
+    th {
+      background:linear-gradient(180deg,rgba(11,35,61,.98),rgba(5,17,38,.98));
+      border-bottom:2px solid #5bdff4;
+      box-shadow:0 5px 16px rgba(0,0,0,.34);
+      text-shadow:1px 1px 0 #020714,0 0 8px currentColor;
+    }
+    td { background:rgba(2,9,23,.8); color:#edf8ff; }
+    tbody tr:nth-child(even) td { background:rgba(8,28,49,.72); }
+    tbody tr:hover td { background:rgba(13,55,75,.83); box-shadow:inset 0 1px rgba(99,229,255,.1),inset 0 -1px rgba(255,112,216,.08); }
+    .sid { color:#7df7de; }
+    .empty-cell { color:#55758d; }
+    mark { background:#76efff; color:#03101c; box-shadow:0 0 8px rgba(85,229,255,.36); }
+    .loading,.no-results { color:#9ebbd1; }
+    .no-results::before { color:#ff75db; }
+    .page-btn { color:#b7d0df; border:2px solid #315b78; background:rgba(2,10,25,.9); }
+    .page-btn:hover,.page-btn.current { color:#72efff; border-color:#72efff; box-shadow:0 0 12px rgba(85,229,255,.24); }
+    .page-btn.current { background:linear-gradient(135deg,rgba(8,42,59,.96),rgba(54,13,61,.88)); }
+
+    @media (max-width:720px) {
+      .wrap { padding-top:20px; }
+      .ut-box { border-width:2px; backdrop-filter:blur(7px) saturate(1.12); }
+      .meta-row { padding:10px; }
+      body::before { background-size:100% 100%; background-position:center center; }
+      .hero { flex-wrap:wrap; }
+      .wallpaper-toggle { width:100%;margin-left:0; }
+    }
+    @media (max-width:440px) {
+      tr { border-bottom-color:#69eaff; }
+      .table-wrap { border-width:2px; }
+    }
+    .game-link{opacity:.52;filter:saturate(.55);border-color:#555864;background:rgba(5,8,16,.82);box-shadow:none}
+    .game-link.deltarune{color:#fff;border-color:#656975;background:rgba(8,11,20,.86);box-shadow:none}
+    .game-link.undertale{color:#ff5b6d;border-color:#65404a;background:rgba(24,7,13,.74);box-shadow:none}
+    .game-link.combined{gap:7px;color:#fff;border-color:transparent;border-image:linear-gradient(90deg,#58dbe7,#ff626a) 1;background:linear-gradient(90deg,rgba(20,85,91,.3),rgba(82,18,23,.32));box-shadow:none}
+    .game-link.combined::before{content:"";width:14px;height:13px;flex:0 0 auto;background:linear-gradient(90deg,#58dbe7 0 50%,#ff626a 50% 100%);-webkit-mask:url('../save-editor/game-sprites/spr_heart_0.png') center/contain no-repeat;mask:url('../save-editor/game-sprites/spr_heart_0.png') center/contain no-repeat}
+    .game-link.voices{color:#ffe14d;border-color:#665f35;background:rgba(19,18,5,.72);box-shadow:none}
+    .game-link:hover{opacity:.82;filter:none;border-color:currentColor;box-shadow:none}
+    .game-link.deltarune:hover{color:#fff}.game-link.undertale:hover{color:#ff5b6d}.game-link.combined:hover{color:#fff}.game-link.voices:hover{color:#ffe14d}
+    .game-link.current{opacity:1;filter:none;border-color:currentColor}
+    .game-link.deltarune.current{color:#fff;background:rgba(20,25,39,.96);box-shadow:0 0 16px rgba(255,255,255,.42)}
+    .game-link.undertale.current{color:#ff5b6d;background:linear-gradient(100deg,rgba(49,8,19,.96),rgba(84,12,42,.78));box-shadow:0 0 17px rgba(255,66,91,.4)}
+    .game-link.combined.current{color:#fff;background:linear-gradient(90deg,rgba(20,85,91,.48),rgba(82,18,23,.5));box-shadow:-4px 0 12px rgba(88,219,231,.24),4px 0 12px rgba(255,98,106,.26)}
+    .game-link.voices.current{color:#ffe14d;background:rgba(45,42,2,.96);box-shadow:0 0 17px rgba(255,225,77,.4)}
+    .row-id-wrap{position:relative;min-height:38px;display:flex;align-items:flex-start}.row-id-wrap .sid{display:block;width:100%;transition:opacity .12s}.row-object-btn{position:absolute;z-index:3;top:50%;left:4px;right:4px;display:flex;align-items:center;justify-content:center;min-height:36px;padding:6px 10px;border:2px solid #72efff;background:rgba(2,13,29,.98);color:#72efff;opacity:0;transform:translateY(-50%);font-family:'UTBold',monospace;font-size:13px;cursor:pointer;box-shadow:0 0 13px rgba(85,229,255,.2);transition:opacity .12s,background .12s,color .12s,box-shadow .12s}tbody tr:hover .row-id-wrap .sid,tbody tr:focus-within .row-id-wrap .sid{opacity:.1}tbody tr:hover .row-object-btn,tbody tr:focus-within .row-object-btn{opacity:1}.row-object-btn:hover,.row-object-btn:focus{outline:none;background:#72efff;color:#03101c;box-shadow:0 0 16px rgba(85,229,255,.48)}
+    @media (max-width:720px){.row-id-wrap{display:block}.row-id-wrap .sid,tbody tr:hover .row-id-wrap .sid,tbody tr:focus-within .row-id-wrap .sid{opacity:1}.row-object-btn{position:static;width:100%;margin-top:8px;opacity:1;visibility:visible;pointer-events:auto;transform:none}}
+  </style>
+<link rel="stylesheet" href="../assets/css/dump-switch.css?v=20260715-2">
+  <script>(function(d){var de=d.documentElement;de.classList.add('pt-anim');function h(){de.classList.add('pt-loaded');}if(d.readyState==='complete')setTimeout(h,1000);else addEventListener('load',function(){setTimeout(h,1000);});setTimeout(h,6000);})(document);</script>
+  <style id="pt-style">html.pt-anim::before{content:"";position:fixed;inset:0;z-index:2147483600;background:#050817;opacity:1;transition:opacity .45s ease;}html.pt-anim.pt-loaded::before{opacity:0;pointer-events:none;}#pt-gif{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483601;width:135px;height:135px;object-fit:contain;image-rendering:pixelated;pointer-events:none;opacity:1;transition:opacity .45s ease;filter:none;box-shadow:none;}html.pt-anim.pt-loaded #pt-gif{opacity:0;}html.pt-anim.pt-gone::before,html.pt-anim.pt-gone #pt-gif{display:none;}@media (prefers-reduced-motion:reduce){html.pt-anim::before,#pt-gif{transition:opacity .12s linear;}}</style>
+  <script src="../assets/js/page-loader-gifs.js" defer></script>
+  <script src="../assets/js/page-transition.js?v=20260714-block2" defer></script>
+</head>
+<body>
+<nav class="site-nav"><div><ul>
+  <li><a href="../index.html">ГЛАВНАЯ</a></li>
+  <li><a href="https://tobyfox.bandcamp.com/" target="_blank" rel="noopener noreferrer">САУНДТРЕК</a></li>
+  <li><a href="https://www.fangamer.com/collections/undertale" target="_blank" rel="noopener noreferrer">МЕРЧ</a></li>
+  <li><a href="../save-editor/index.html">СОХРАНЕНИЯ</a></li>
+  <li><a href="../dump-text/index.html" class="current" aria-current="page">ДАМП ТЕКСТА</a></li>
+  <li><a href="../team/index.html">КОМАНДА</a></li>
+</ul></div></nav>
+
+<main class="wrap">
+  <section class="ut-box hero">
+    <span class="soul" aria-hidden="true"></span>
+    <div><h1>ДАМП ТЕКСТА</h1><div class="sub">UNDERTALE</div></div>
+    <button class="wallpaper-toggle" id="wallpaperToggle" type="button" aria-pressed="false">Затемнить обои</button>
+  </section>
+
+  <section class="ut-box">
+    <div class="panel-title">Игра</div>
+    <div class="game-switch">
+      <span class="label">Выберите дамп:</span>
+      <a class="game-link deltarune" href="../dump-text/index.html">DELTARUNE</a>
+      <a class="game-link undertale current" href="index.html" aria-current="page">UNDERTALE</a>
+      <a class="game-link combined" href="../dump-text-combined/index.html">DELTARUNE X UNDERTALE</a>
+      <a class="game-link voices" href="../voice-compare/index.html">ОЗВУЧКИ</a>
+    </div>
+  </section>
+
+  <section class="ut-box">
+    <div class="panel-title">Поиск</div>
+    <div class="searchbar">
+      <label class="field"><span class="ficon" aria-hidden="true"></span><input id="q" type="text" placeholder="Введите текст или ID строки…" autocomplete="off" spellcheck="false"><button class="clear" id="qClear" title="Очистить" type="button">×</button></label>
+      <button class="btn" id="resetBtn" type="button">Сброс</button>
+    </div>
+    <div class="object-filter">
+      <div class="object-filter-title">По объекту: <span class="object-active" id="objectActive">Все объекты</span></div>
+      <div class="object-controls">
+        <div class="object-field"><span>OBJ</span><input id="objectQuery" type="text" list="objectList" placeholder="Найдите и выберите объект…" autocomplete="off" spellcheck="false" aria-label="Поиск объекта"><button class="object-query-clear" id="objectQueryClear" type="button" title="Очистить объект" aria-label="Очистить объект">×</button></div>
+        <datalist id="objectList"></datalist>
+        <button class="object-btn primary" id="objectApply" type="button">Показать объект</button>
+        <button class="object-btn" id="objectClear" type="button" disabled>Все объекты</button>
+      </div>
+      <div class="object-message" id="objectMessage">Выберите объект из списка. Основной поиск выше затем ищет только внутри него.</div>
+    </div>
+    <div class="opt-row">
+      <div class="opt-group">
+        <span class="label">Показывать столбцы</span>
+        <div class="chips" id="colChips">
+          <label class="chip on" data-col="a"><input type="checkbox" checked>ID</label>
+          <label class="chip on" data-col="b"><input type="checkbox" checked>English</label>
+          <label class="chip on" data-col="c"><input type="checkbox" checked>日本語</label>
+          <label class="chip on" data-col="d"><input type="checkbox" checked>C-arth97</label>
+          <label class="chip on" data-col="e"><input type="checkbox" checked>Tales&amp;Stories Team</label>
+        </div>
+      </div>
+      <div class="opt-group">
+        <span class="label">Искать в столбцах</span>
+        <div class="chips" id="scopeChips">
+          <label class="chip on" data-scope="a"><input type="checkbox" checked>ID</label>
+          <label class="chip on" data-scope="b"><input type="checkbox" checked>English</label>
+          <label class="chip on" data-scope="c"><input type="checkbox" checked>日本語</label>
+          <label class="chip on" data-scope="d"><input type="checkbox" checked>C-arth97</label>
+          <label class="chip on" data-scope="e"><input type="checkbox" checked>Tales&amp;Stories Team</label>
+        </div>
+      </div>
+      <div class="mode-groups" id="modeChips">
+        <div class="opt-group">
+          <span class="label">Параметры поиска</span>
+          <div class="chips">
+            <label class="chip" data-mode="case" title="Учитывать регистр букв при поиске (Abc ≠ abc)"><input type="checkbox">Регистр</label>
+            <label class="chip" data-mode="word" title="Совпадение только по целому слову, а не по его части"><input type="checkbox">Слово целиком</label>
+            <label class="chip" data-mode="regex" title="Искать по регулярному выражению (regex)"><input type="checkbox">Regex</label>
+          </div>
+        </div>
+        <div class="opt-group">
+          <span class="label">Фильтры строк</span>
+          <div class="chips">
+            <label class="chip" data-mode="noUnused" title="Скрыть строки без English или 日本語"><input type="checkbox">Без unused</label>
+            <label class="chip" data-mode="noDup" title="Скрыть строки с одинаковым текстом в English и 日本語"><input type="checkbox">Без дубликатов</label>
+          </div>
+        </div>
+      </div>
+    </div>
+    <details class="opt-note">
+      <summary class="opt-note-h">ЧАВО — ПОИСК И ФИЛЬТРЫ</summary>
+      <ul>
+        <li><b class="n-columns">Показывать столбцы</b> — выбрать, какие столбцы отображаются в таблице.</li>
+        <li><b class="n-scope">Искать в столбцах</b> — выбрать столбцы, в которых выполняется поиск.</li>
+        <li><b class="n-case">Регистр</b> — учитывать заглавные и строчные буквы (Abc ≠ abc).</li>
+        <li><b class="n-word">Слово целиком</b> — совпадение только по целому слову, а не по его части.</li>
+        <li><b class="n-regex">Regex</b> — поиск по регулярному выражению.</li>
+        <li><b class="n-unused">Без unused</b> — скрыть строки без English или 日本語.</li>
+        <li><b class="n-dup">Без дубликатов</b> — скрыть строки с одинаковым текстом в English и 日本語.</li>
+        <li><b class="n-teams">C-arth97 и Tales&amp;Stories Team</b> — команды переводчиков.</li>
+      </ul>
+    </details>
+    <div id="regexErr" class="err"></div>
+  </section>
+
+  <div class="meta-row">
+    <div class="count" id="count">Загрузка…</div>
+    <label class="perpage"><span>Строк на странице</span><select id="perPage"><option>50</option><option selected>100</option><option>250</option><option>500</option></select></label>
+  </div>
+
+  <div class="table-wrap"><div class="table-scroll"><table class="dump">
+    <thead><tr><th>ID строки</th><th>English</th><th>日本語</th><th>C-arth97</th><th>Tales&amp;Stories Team</th></tr></thead>
+    <tbody id="tbody"><tr><td colspan="5" class="loading">Загрузка дампа…</td></tr></tbody>
+  </table></div></div>
+  <div class="pager" id="pager"></div>
+</main>
+
+<script src="dump.js?v=20260714-teams1"></script>
+<script src="app.js?v=20260715-wallpaper1"></script>
+</body>
+</html>

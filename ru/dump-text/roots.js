@@ -49,8 +49,9 @@
     q: '',
     scope: { a: true, b: true, c: true },
     cols: { a: true, b: true, c: true },
-    mode: { case: false, word: false, regex: false, empty: false, dialog: false, noUnused: false, noDup: false, newPhrases: false },
+    mode: { case: false, word: false, regex: false, dialog: false, noUnused: false, noDup: false, newPhrases: false },
     patchDay: PATCH_DAYS[0] ? PATCH_DAYS[0].id : '',
+    object: '',
     condFlags: [],
     weirdRoute: false,
     page: 1,
@@ -86,8 +87,16 @@
     dlgAffects: document.getElementById('dlgAffects'),
     dlgEffects: document.getElementById('dlgEffects'),
     dlgEffectsWrap: document.getElementById('dlgEffectsWrap'),
-    dlgBody: document.getElementById('dlgBody')
+    dlgBody: document.getElementById('dlgBody'),
+    objectQuery: document.getElementById('objectQuery'),
+    objectQueryClear: document.getElementById('objectQueryClear'),
+    objectList: document.getElementById('objectList'),
+    objectApply: document.getElementById('objectApply'),
+    objectClear: document.getElementById('objectClear'),
+    objectActive: document.getElementById('objectActive'),
+    objectMessage: document.getElementById('objectMessage')
   };
+  var objectNames = [];
 
   var dlgCache = {};
   var choicesCache = {};
@@ -162,6 +171,60 @@
     return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
+  function objectFromKey(key) {
+    key = String(key || '');
+    var idx = key.indexOf('_slash_');
+    if (idx <= 0) return '';
+    var name = key.slice(0, idx);
+    return name.indexOf('obj_') === 0 ? name : '';
+  }
+
+  function syncObjectUI(message, keepInput, isError) {
+    if (!keepInput) els.objectQuery.value = state.object || '';
+    els.objectActive.textContent = state.object || 'Все объекты';
+    els.objectActive.classList.toggle('on', !!state.object);
+    els.objectClear.disabled = !state.object;
+    var visibleMessage = message || '';
+    els.objectMessage.textContent = visibleMessage;
+    els.objectMessage.hidden = !visibleMessage;
+    els.objectMessage.classList.toggle('error', !!isError);
+  }
+
+  function buildObjectList() {
+    var seen = Object.create(null);
+    for (var i = 0; i < DATA.length; i++) {
+      var name = objectFromKey(DATA[i][0]);
+      if (name) seen[name] = true;
+    }
+    objectNames = Object.keys(seen).sort(function (a, b) { return a.localeCompare(b); });
+    els.objectList.innerHTML = objectNames.map(function (name) {
+      return '<option value="' + escapeHtml(name) + '"></option>';
+    }).join('');
+    if (state.object && objectNames.indexOf(state.object) === -1) state.object = '';
+    syncObjectUI();
+  }
+
+  function setObjectFilter(name) {
+    state.object = name || '';
+    syncObjectUI();
+    applyFilter();
+    var ts = document.querySelector('.table-scroll');
+    if (ts) ts.scrollTop = 0;
+  }
+
+  function applyObjectInput() {
+    var value = els.objectQuery.value.trim();
+    if (!value) { setObjectFilter(''); return; }
+    var lower = value.toLowerCase();
+    var exact = objectNames.filter(function (name) { return name.toLowerCase() === lower; });
+    if (exact.length === 1) { setObjectFilter(exact[0]); return; }
+    var matches = objectNames.filter(function (name) { return name.toLowerCase().indexOf(lower) !== -1; });
+    if (matches.length === 1) { setObjectFilter(matches[0]); return; }
+    syncObjectUI(matches.length
+      ? 'Найдено объектов: ' + matches.length + '. Уточните имя и выберите вариант из списка.'
+      : 'Такого объекта нет в выбранной главе DELTARUNE.', true, true);
+  }
+
   function buildMatcher() {
     var q = state.q;
     if (!q) return null;
@@ -213,8 +276,8 @@
   function rowMatches(row, re) {
     var en = row.cleanEn != null ? row.cleanEn : row[1];
     var ja = row.cleanJa != null ? row.cleanJa : row[2];
+    if (state.object && objectFromKey(row[0]) !== state.object) return false;
     if (state.mode.newPhrases && !isNewPhraseKey(row[0])) return false;
-    if (state.mode.empty && en && ja) return false;
     if (state.mode.noUnused && (!en || !ja)) return false;
     if (state.mode.noDup && en && ja && normForDup(en) === normForDup(ja)) return false;
     if (state.mode.dialog && curDlg && !resolveUnitId(row[0])) return false;
@@ -241,7 +304,7 @@
 
   function applyFilter() {
     var re = buildMatcher();
-    if (!state.q && !state.mode.empty && !state.mode.dialog && !state.mode.noUnused && !state.mode.noDup && !state.mode.newPhrases && !state.weirdRoute && !(state.condFlags && state.condFlags.length)) {
+    if (!state.q && !state.object && !state.mode.dialog && !state.mode.noUnused && !state.mode.noDup && !state.mode.newPhrases && !state.weirdRoute && !(state.condFlags && state.condFlags.length)) {
       state.filtered = DATA;
     } else {
       var out = [];
@@ -301,9 +364,7 @@
       var en = r.cleanEn != null ? r.cleanEn : r[1];
       var ja = r.cleanJa != null ? r.cleanJa : r[2];
       var hasDlg = !!resolveUnitId(k);
-      var objName = null;
-      var idx = k.indexOf('_slash_');
-      if (idx > 0) objName = k.slice(0, idx);
+      var objName = objectFromKey(k);
       var actions = '';
       if (hasDlg) actions += '<button type="button" class="dlg-btn">Показать диалог</button>';
       else actions += '<span class="no-dlg-mark">—</span>';
@@ -365,17 +426,36 @@
     applyFilter();
     els.q.focus();
   });
+  els.objectApply.addEventListener('click', applyObjectInput);
+  els.objectQueryClear.addEventListener('click', function () {
+    els.objectQuery.value = '';
+    setObjectFilter('');
+    els.objectQuery.focus();
+  });
+  els.objectClear.addEventListener('click', function () { setObjectFilter(''); });
+  els.objectQuery.addEventListener('change', function () {
+    var value = els.objectQuery.value.trim().toLowerCase();
+    if (objectNames.some(function (name) { return name.toLowerCase() === value; })) applyObjectInput();
+  });
+  els.objectQuery.addEventListener('input', function () {
+    if (!els.objectQuery.value.trim() && state.object) setObjectFilter('');
+  });
+  els.objectQuery.addEventListener('keydown', function (event) {
+    if (event.key === 'Enter') { event.preventDefault(); applyObjectInput(); }
+  });
 
   els.resetBtn.addEventListener('click', function () {
     els.q.value = '';
     state.q = '';
     state.scope = { a: true, b: true, c: true };
     state.cols = { a: true, b: true, c: true };
-    state.mode = { case: false, word: false, regex: false, empty: false, dialog: false, noUnused: false, noDup: false, newPhrases: false };
+    state.mode = { case: false, word: false, regex: false, dialog: false, noUnused: false, noDup: false, newPhrases: false };
+    state.object = '';
     state.patchDay = PATCH_DAYS[0] ? PATCH_DAYS[0].id : '';
     state.condFlags = []; state.weirdRoute = false;
     if (els.flagCond) els.flagCond.value = '';
     if (els.patchDay) els.patchDay.value = state.patchDay;
+    syncObjectUI();
     var wl = document.querySelector('label[data-cond="weird"]');
     if (wl) { wl.classList.remove('on'); var wb = wl.querySelector('input'); if (wb) wb.checked = false; }
     syncChipUI();
@@ -498,6 +578,7 @@
         cols: state.cols,
         mode: state.mode,
         patchDay: state.patchDay,
+        object: state.object,
         condFlags: state.condFlags,
         weirdRoute: state.weirdRoute,
         perPage: state.perPage,
@@ -517,6 +598,7 @@
       row.cleanEn = cleanForTable(row[1]);
       row.cleanJa = cleanForTable(row[2]);
     }
+    buildObjectList();
     state.page = 1;
     applyColumns();
     applyFilter();
@@ -1840,32 +1922,7 @@
       e.preventDefault();
       var obj = objBtn.getAttribute('data-obj');
       if (!obj) return;
-      els.q.value = obj;
-      state.q = obj;
-      state.scope.a = true;
-      var scopeLabel = els.scopeChips.querySelector('label[data-scope="a"]');
-      if (scopeLabel) {
-        scopeLabel.classList.add('on');
-        var box = scopeLabel.querySelector('input');
-        if (box) box.checked = true;
-      }
-      state.mode.regex = false;
-      state.mode.word = false;
-      var regexLabel = els.modeChips.querySelector('label[data-mode="regex"]');
-      if (regexLabel) {
-        regexLabel.classList.remove('on');
-        var rb = regexLabel.querySelector('input');
-        if (rb) rb.checked = false;
-      }
-      var wordLabel = els.modeChips.querySelector('label[data-mode="word"]');
-      if (wordLabel) {
-        wordLabel.classList.remove('on');
-        var wb = wordLabel.querySelector('input');
-        if (wb) wb.checked = false;
-      }
-      applyFilter();
-      var ts = document.querySelector('.table-scroll');
-      if (ts) ts.scrollTop = 0;
+      setObjectFilter(obj);
       return;
     }
     var badge = e.target.closest('.dlg-btn');
@@ -1889,6 +1946,8 @@
     state.scope = Object.assign({ a: true, b: true, c: true }, saved.scope || {});
     state.cols = Object.assign({ a: true, b: true, c: true }, saved.cols || {});
     state.mode = Object.assign(state.mode, saved.mode || {});
+    delete state.mode.empty;
+    state.object = saved.object || '';
     state.patchDay = patchDayInfo(saved.patchDay) ? saved.patchDay : state.patchDay;
     state.condFlags = saved.condFlags || [];
     state.weirdRoute = !!saved.weirdRoute;

@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8">
-  <link rel="icon" type="image/png" href="../save-editor/game-sprites/spr_heart_0.png">
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
   <link rel="apple-touch-icon" href="../save-editor/game-sprites/spr_heart_0.png">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#000000">
@@ -113,6 +113,13 @@
     .btn:active { background:#161616; }
 
     .opt-row { display:grid; grid-template-columns:repeat(auto-fit, minmax(230px, 1fr)); gap:16px 26px; margin-top:18px; }
+    .opt-row.search-options { grid-template-columns:repeat(2,minmax(0,1fr)); align-items:start; gap:14px 22px; margin-top:14px; }
+    .mode-groups { display:contents; }
+    .search-options .params-group,.search-options .row-filter-group { grid-column:auto; gap:8px; padding-top:10px; border-top:1px solid #242b3a; }
+    .search-options .params-group>.opt-chips,.search-options .row-filter-group>.opt-chips { gap:7px; }
+    .advanced-filter-row { grid-column:1/-1; display:flex; align-items:flex-end; gap:10px 14px; flex-wrap:wrap; margin-top:-2px; }
+    .advanced-filter-row .patch-pick,.advanced-filter-row .patch-filter-chips { margin-top:0; }
+    .advanced-filter-row .route-chips { align-items:center; }
     .opt-group { display:flex; flex-direction:column; gap:10px; min-width:0; }
     .opt-group .label { color:var(--dim); font-size:13px; text-transform:uppercase; letter-spacing:.1em; }
     .opt-chips { display:flex; gap:9px; flex-wrap:wrap; }
@@ -126,13 +133,17 @@
     .chk input { position:absolute; opacity:0; width:0; height:0; pointer-events:none; }
     .chk::before {
       content:""; width:20px; height:18px; flex:0 0 auto;
-      background:url('../save-editor/game-sprites/spr_heart_0.png') center/contain no-repeat;
-      opacity:.18; filter:grayscale(1) brightness(2);
+      background:currentColor;
+      -webkit-mask:url('../save-editor/game-sprites/spr_heart_0.png') center/contain no-repeat;
+      mask:url('../save-editor/game-sprites/spr_heart_0.png') center/contain no-repeat;
+      opacity:.18;
       transition:opacity .1s, filter .1s;
     }
     .chk:hover { color:#fff; border-color:#5a6478; }
     .chk.on { color:var(--yellow); border-color:var(--yellow); background:#13140a; }
-    .chk.on::before { opacity:1; filter:none; }
+    .chk.on::before { opacity:1; filter:drop-shadow(0 0 4px currentColor); }
+    #scopeChips .chk::before { background:var(--soul); }
+    #scopeChips .chk.on::before { filter:drop-shadow(0 0 4px rgba(255,42,42,.75)); }
     .chk.on.col-b { color:var(--cyan); border-color:var(--cyan); background:#091620; }
     .chk.on.col-c { color:var(--pink); border-color:var(--pink); background:#1c0c17; }
     .chk.on[data-cond="weird"] { color:var(--cyan); border-color:var(--cyan); background:#08161f; box-shadow:0 0 12px rgba(73,200,255,.3); }
@@ -140,7 +151,6 @@
     .chk.on[data-mode="case"]   { color:#ff9a3c; border-color:#ff9a3c; background:#1c1206; box-shadow:0 0 12px rgba(255,154,60,.3); }
     .chk.on[data-mode="word"]   { color:var(--green); border-color:var(--green); background:#0a1a0b; box-shadow:0 0 12px rgba(123,240,107,.3); }
     .chk.on[data-mode="regex"]  { color:#b98cff; border-color:#b98cff; background:#150c22; box-shadow:0 0 12px rgba(185,140,255,.3); }
-    .chk.on[data-mode="empty"]  { color:#ff5a5a; border-color:#ff5a5a; background:#210a0a; box-shadow:0 0 12px rgba(255,90,90,.3); }
     .chk.on[data-mode="dialog"] { color:#4dffc3; border-color:#4dffc3; background:#06201a; box-shadow:0 0 12px rgba(77,255,195,.3); }
     .chk.on[data-mode="noUnused"] { color:var(--pink); border-color:var(--pink); background:#1c0c17; box-shadow:0 0 12px rgba(255,123,213,.3); }
     .chk.on[data-mode="noDup"]  { color:#ffe14d; border-color:#ffe14d; background:#1c1805; box-shadow:0 0 12px rgba(255,225,77,.3); }
@@ -152,15 +162,18 @@
     .patch-pick select:disabled { opacity:.45; cursor:not-allowed; border-color:#3a4255; }
     .patch-filter-chips { margin-top:8px; }
 
-    .opt-note { margin-top:14px; padding:12px 15px; background:#080a12; border:2px solid #2c3346; border-left:4px solid var(--yellow); }
-    .opt-note .opt-note-h { color:var(--yellow); font-size:12px; text-transform:uppercase; letter-spacing:.12em; margin-bottom:9px; }
+    .opt-note { margin-top:10px; padding:10px 13px; background:#080a12; border:2px solid #2c3346; border-left:4px solid var(--yellow); }
+    .opt-note .opt-note-h { color:var(--yellow); font-size:12px; text-transform:uppercase; letter-spacing:.12em; margin:0; cursor:pointer; }
+    .opt-note .opt-note-h::marker { color:var(--yellow); }
+    .opt-note[open] .opt-note-h { margin-bottom:9px; }
     .opt-note ul { margin:0; padding:0; list-style:none; display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:6px 22px; }
     .opt-note li { font-size:14px; line-height:1.45; color:var(--dim); }
     .opt-note li b { font-family:'DTMBold',monospace; }
+    .opt-note b.n-columns { color:var(--cyan); }
+    .opt-note b.n-scope { color:var(--green); }
     .opt-note b.n-case   { color:#ff9a3c; }
     .opt-note b.n-word   { color:var(--green); }
     .opt-note b.n-regex  { color:#b98cff; }
-    .opt-note b.n-empty  { color:#ff5a5a; }
     .opt-note b.n-dialog { color:#4dffc3; }
     .opt-note b.n-unused { color:var(--pink); }
     .opt-note b.n-dup    { color:#ffe14d; }
@@ -178,6 +191,31 @@
     .chapter-pick select { background:#000; border:3px solid var(--line); color:#fff; height:48px; padding:0 14px; font-size:20px; cursor:pointer; font-family:'DTMBold',monospace; min-width:200px; }
     .chapter-pick select:focus { outline:none; border-color:var(--yellow); }
     .perpage select:hover { border-color:var(--yellow); }
+    .game-switch { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .game-switch .label { font-size:17px; color:var(--dim); margin-right:4px; }
+    .game-link { display:inline-flex; min-height:44px; align-items:center; padding:7px 14px; border:3px solid #3a4255; font-family:'DTMBold',monospace; font-size:16px; }
+    .game-link:hover { color:#fff; border-color:#fff; }
+    .game-link.deltarune.current { color:#fff; border-color:#fff; background:#17171d; box-shadow:0 0 14px rgba(255,255,255,.32); }
+    .game-link.undertale:hover,.game-link.undertale.current { color:#ff5454; border-color:#ff5454; background:#260606; box-shadow:0 0 14px rgba(255,48,48,.34); }
+    .game-link.voices:hover,.game-link.voices.current { color:var(--yellow); border-color:var(--yellow); background:#242300; box-shadow:0 0 14px rgba(249,255,16,.3); }
+    .object-filter { margin-top:16px; padding:14px; border:2px solid #3a4255; background:rgba(0,0,0,.5); }
+    .object-filter-title { display:flex; align-items:center; gap:10px; flex-wrap:wrap; color:var(--dim); font-size:14px; text-transform:uppercase; letter-spacing:.08em; }
+    .object-active { color:#fff; text-transform:none; letter-spacing:0; }
+    .object-active.on { color:var(--green); }
+    .object-controls { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:10px; }
+    .object-field { display:flex; align-items:center; flex:1 1 360px; min-width:220px; height:46px; border:3px solid var(--line); background:#000; }
+    .object-field>span { padding:0 11px; color:var(--green); font-family:'DTMBold',monospace; }
+    .object-field input { width:100%; min-width:0; height:100%; padding:0 12px; border:0; border-left:2px solid #293040; outline:0; background:transparent; color:#fff; font-size:17px; }
+    .object-field:focus-within { border-color:var(--green); box-shadow:0 0 12px rgba(65,255,122,.2); }
+    .object-query-clear { flex:0 0 31px; width:31px; height:31px; margin-right:6px; padding:0 0 2px; border:2px solid #ff4b4b; border-radius:50%; background:#280707; color:#fff; cursor:pointer; font:22px/1 Arial,sans-serif; box-shadow:0 0 9px rgba(255,48,48,.3); }
+    .object-query-clear:hover,.object-query-clear:focus { outline:none; background:#ff3f3f; border-color:#fff; color:#000; box-shadow:0 0 14px rgba(255,70,70,.65); transform:scale(1.06); }
+    .object-btn { min-height:46px; padding:7px 13px; border:3px solid #657083; background:#000; color:#fff; cursor:pointer; font-family:'DTMBold',monospace; }
+    .object-btn.primary { color:var(--green); border-color:var(--green); }
+    .object-btn:hover { color:#000; background:#fff; border-color:#fff; }
+    .object-btn.primary:hover { background:var(--green); border-color:var(--green); }
+    .object-btn:disabled { opacity:.4; cursor:default; color:#657083; background:#000; border-color:#657083; }
+    .object-message { margin-top:9px; color:var(--dim); font-size:14px; }
+    .object-message.error { color:#ff7070; }
 
     .err { padding:10px 14px; color:#000; background:var(--yellow); font-size:15px; margin-top:12px; border:3px solid #000; }
 
@@ -393,6 +431,8 @@
       .dr-box { padding:14px; }
       .opt-note ul { grid-template-columns:minmax(0,1fr); }
       .opt-note li { min-width:0; }
+      .opt-row.search-options { grid-template-columns:minmax(0,1fr); }
+      .search-options .params-group,.search-options .row-filter-group { grid-column:auto; }
       .meta-row { align-items:stretch; gap:10px; margin:18px 0 10px; }
       .count { font-size:16px; }
       .perpage { justify-content:space-between; width:100%; font-size:12px; }
@@ -456,6 +496,8 @@
       .kid-label { align-self:flex-start; max-width:100%; white-space:normal; overflow-wrap:anywhere; }
       .flow.gate-flow { width:100%; padding-left:12px; box-sizing:border-box; }
       .dynamic-state-note { max-width:100%; box-sizing:border-box; overflow-wrap:anywhere; }
+      .game-switch .label { width:100%; }
+      .game-link { flex:1 1 130px; justify-content:center; }
     }
     @media (max-width:360px) {
       .site-nav ul:first-child {
@@ -463,11 +505,25 @@
         row-gap:3px; padding-top:5px; padding-bottom:5px;
       }
     }
+    .game-link{opacity:.52;filter:saturate(.55);border-color:#555864;background:rgba(5,6,12,.84);box-shadow:none}
+    .game-link.deltarune{color:#fff;border-color:#656975;background:rgba(8,9,16,.86);box-shadow:none}
+    .game-link.undertale{color:#ff5b6d;border-color:#65404a;background:rgba(18,6,10,.72);box-shadow:none}
+    .game-link.combined{gap:7px;color:#fff;border-color:transparent;border-image:linear-gradient(90deg,#58dbe7,#ff626a) 1;background:linear-gradient(90deg,rgba(20,85,91,.3),rgba(82,18,23,.32));box-shadow:none}
+    .game-link.combined::before{content:"";width:14px;height:13px;flex:0 0 auto;background:linear-gradient(90deg,#58dbe7 0 50%,#ff626a 50% 100%);-webkit-mask:url('../save-editor/game-sprites/spr_heart_0.png') center/contain no-repeat;mask:url('../save-editor/game-sprites/spr_heart_0.png') center/contain no-repeat}
+    .game-link.voices{color:#ffe14d;border-color:#665f35;background:rgba(18,17,5,.72);box-shadow:none}
+    .game-link:hover{opacity:.82;filter:none;border-color:currentColor;box-shadow:none}
+    .game-link.deltarune:hover{color:#fff}.game-link.undertale:hover{color:#ff5b6d}.game-link.combined:hover{color:#fff}.game-link.voices:hover{color:#ffe14d}
+    .game-link.current{opacity:1;filter:none;border-color:currentColor}
+    .game-link.deltarune.current{color:#fff;background:#17171d;box-shadow:0 0 16px rgba(255,255,255,.42)}
+    .game-link.undertale.current{color:#ff5b6d;background:#260606;box-shadow:0 0 16px rgba(255,66,91,.4)}
+    .game-link.combined.current{color:#fff;background:linear-gradient(90deg,rgba(20,85,91,.48),rgba(82,18,23,.5));box-shadow:-4px 0 12px rgba(88,219,231,.24),4px 0 12px rgba(255,98,106,.26)}
+    .game-link.voices.current{color:#ffe14d;background:#2d2a02;box-shadow:0 0 16px rgba(255,225,77,.4)}
 </style>
+<link rel="stylesheet" href="../assets/css/dump-switch.css?v=20260715-2">
 <script>(function(d){var de=d.documentElement;de.classList.add('pt-anim');function h(){de.classList.add('pt-loaded');}if(d.readyState==='complete')setTimeout(h,1000);else addEventListener('load',function(){setTimeout(h,1000);});setTimeout(h,6000);})(document);</script>
 <style id="pt-style">html.pt-anim::before{content:"";position:fixed;inset:0;z-index:2147483600;background:#0c0a14;opacity:1;transition:opacity .45s ease;}html.pt-anim.pt-loaded::before{opacity:0;pointer-events:none;}#pt-gif{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483601;width:135px;height:135px;object-fit:contain;image-rendering:pixelated;pointer-events:none;opacity:1;transition:opacity .45s ease;}html.pt-anim.pt-loaded #pt-gif{opacity:0;}html.pt-anim.pt-gone::before,html.pt-anim.pt-gone #pt-gif{display:none;}@media (prefers-reduced-motion:reduce){html.pt-anim::before,#pt-gif{transition:opacity .12s linear;}}</style>
 <script src="../assets/js/page-loader-gifs.js" defer></script>
-<script src="../assets/js/page-transition.js" defer></script>
+<script src="../assets/js/page-transition.js?v=20260714-block2" defer></script>
 </head>
 <body>
 
@@ -494,6 +550,17 @@
     </div>
   </div>
 
+  <div class="dr-box">
+    <div class="panel-title">Игра</div>
+    <div class="game-switch">
+      <span class="label">Выберите дамп:</span>
+      <a class="game-link deltarune current" href="index.html" aria-current="page">DELTARUNE</a>
+      <a class="game-link undertale" href="../dump-text-undertale/index.html">UNDERTALE</a>
+      <a class="game-link combined" href="../dump-text-combined/index.html">DELTARUNE X UNDERTALE</a>
+      <a class="game-link voices" href="../voice-compare/index.html">ОЗВУЧКИ</a>
+    </div>
+  </div>
+
   <div class="dr-box chapter-box">
     <div class="panel-title">Глава</div>
     <div class="chapter-pick">
@@ -513,7 +580,18 @@
       <button class="btn" id="resetBtn" type="button">Сброс</button>
     </div>
 
-    <div class="opt-row">
+    <div class="object-filter">
+      <div class="object-filter-title">По объекту: <span class="object-active" id="objectActive">Все объекты</span></div>
+      <div class="object-controls">
+        <div class="object-field"><span>OBJ</span><input id="objectQuery" type="text" list="objectList" placeholder="Найдите и выберите объект…" autocomplete="off" spellcheck="false" aria-label="Поиск объекта"><button class="object-query-clear" id="objectQueryClear" type="button" title="Очистить объект" aria-label="Очистить объект">×</button></div>
+        <datalist id="objectList"></datalist>
+        <button class="object-btn primary" id="objectApply" type="button">Показать объект</button>
+        <button class="object-btn" id="objectClear" type="button" disabled>Все объекты</button>
+      </div>
+      <div class="object-message" id="objectMessage" hidden></div>
+    </div>
+
+    <div class="opt-row search-options">
       <div class="opt-group">
         <span class="label">Показывать столбцы</span>
         <div class="opt-chips" id="colChips">
@@ -530,17 +608,25 @@
           <label class="chk on" data-scope="c"><input type="checkbox" checked>日本語</label>
         </div>
       </div>
-      <div class="opt-group">
-        <span class="label">Параметры поиска</span>
-        <div class="opt-chips" id="modeChips">
-          <label class="chk" data-mode="case" title="Учитывать регистр букв при поиске (Abc ≠ abc)"><input type="checkbox">Регистр</label>
-          <label class="chk" data-mode="word" title="Совпадение только по целому слову, а не по его части"><input type="checkbox">Слово целиком</label>
-          <label class="chk" data-mode="regex" title="Искать по регулярному выражению (regex)"><input type="checkbox">Regex</label>
-          <label class="chk" data-mode="empty" title="Показать строки, где отсутствует либо EN, либо 日本語 перевод"><input type="checkbox">Без перевода</label>
-          <label class="chk" data-mode="dialog" title="Показать только строки, у которых доступен просмотр диалога"><input type="checkbox">С диалогом</label>
-          <label class="chk" data-mode="noUnused" title="Скрыть буквальные unused-строки"><input type="checkbox">Без unused</label>
-          <label class="chk" data-mode="noDup" title="Скрыть строки, где EN и 日本語 имеют одинаковый текст, то есть как unused"><input type="checkbox">Без дубликатов</label>
+      <div class="mode-groups" id="modeChips">
+        <div class="opt-group params-group">
+          <span class="label">Параметры поиска</span>
+          <div class="opt-chips">
+            <label class="chk" data-mode="case" title="Учитывать регистр букв при поиске (Abc ≠ abc)"><input type="checkbox">Регистр</label>
+            <label class="chk" data-mode="word" title="Совпадение только по целому слову, а не по его части"><input type="checkbox">Слово целиком</label>
+            <label class="chk" data-mode="regex" title="Искать по регулярному выражению (regex)"><input type="checkbox">Regex</label>
+          </div>
         </div>
+        <div class="opt-group row-filter-group">
+          <span class="label">Фильтры строк</span>
+          <div class="opt-chips">
+            <label class="chk" data-mode="dialog" title="Показать только строки, у которых доступен просмотр диалога"><input type="checkbox">С диалогом</label>
+            <label class="chk" data-mode="noUnused" title="Скрыть строки без English или 日本語"><input type="checkbox">Без unused</label>
+            <label class="chk" data-mode="noDup" title="Скрыть строки с одинаковым текстом в English и 日本語"><input type="checkbox">Без дубликатов</label>
+          </div>
+        </div>
+      </div>
+      <div class="advanced-filter-row">
         <label class="patch-pick">
           <span>День патча</span>
           <select id="patchDay"></select>
@@ -548,31 +634,27 @@
         <div class="opt-chips patch-filter-chips" id="patchModeChips">
           <label class="chk" data-mode="newPhrases" title="Показать только строки, добавленные в выбранный патч"><input type="checkbox">Новые фразы</label>
         </div>
-      </div>
-    </div>
-    <div class="opt-row" style="margin-top:6px;">
-      <div class="opt-group" style="flex:1 1 100%;">
-        <span class="label">Маршрут</span>
-        <div class="opt-chips" style="align-items:center;">
-          <label class="chk" data-cond="weird" title="Показать все реплики Weird Route (Странного пути), включая скрытые ветки"><input type="checkbox">Weird Route — все диалоги</label>
+        <div class="opt-chips route-chips">
+          <label class="chk" data-cond="weird" title="Показать все реплики Weird Route (Странного пути)"><input type="checkbox">Weird Route — все диалоги</label>
         </div>
       </div>
     </div>
 
-    <div class="opt-note">
-      <div class="opt-note-h">ЧАВО — ПАРАМЕТРЫ ПОИСКА</div>
+    <details class="opt-note">
+      <summary class="opt-note-h">ЧАВО — ПОИСК И ФИЛЬТРЫ</summary>
       <ul>
+        <li><b class="n-columns">Показывать столбцы</b> — выбрать, какие столбцы отображаются в таблице.</li>
+        <li><b class="n-scope">Искать в столбцах</b> — выбрать столбцы, в которых выполняется поиск.</li>
         <li><b class="n-case">Регистр</b> — учитывать заглавные и строчные буквы (Abc ≠ abc).</li>
         <li><b class="n-word">Слово целиком</b> — совпадение только по целому слову, а не по его части.</li>
         <li><b class="n-regex">Regex</b> — поиск по регулярному выражению.</li>
-        <li><b class="n-empty">Без перевода</b> — показать строки, где отсутствует либо EN, либо 日本語 перевод.</li>
         <li><b class="n-dialog">С диалогом</b> — показать только строки, у которых доступен просмотр диалога.</li>
-        <li><b class="n-unused">Без unused</b> — скрыть буквальные unused-строки.</li>
-        <li><b class="n-dup">Без дубликатов</b> — скрыть строки, где EN и 日本語 имеют одинаковый текст, то есть как unused.</li>
+        <li><b class="n-unused">Без unused</b> — скрыть строки без English или 日本語.</li>
+        <li><b class="n-dup">Без дубликатов</b> — скрыть строки с одинаковым текстом в English и 日本語.</li>
         <li><b class="n-new">Новые фразы</b> — показать строки, добавленные в выбранный день патча.</li>
         <li><b class="n-weird">Weird Route — все диалоги</b> — показать все реплики Странного пути.</li>
       </ul>
-    </div>
+    </details>
 
     <div id="regexErr" class="err" style="display:none;"></div>
   </div>
@@ -641,6 +723,6 @@
 <script src="../save-editor/knight-flagnames.js"></script>
 <script src="../save-editor/knight-flaginfo.js"></script>
 <script src="chapters/flaginfo-live.js"></script>
-<script src="roots.js?v=20260714-tree5"></script>
+<script src="roots.js?v=20260715-object-message1"></script>
 </body>
 </html>

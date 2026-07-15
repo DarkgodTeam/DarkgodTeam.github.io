@@ -1,6 +1,14 @@
 (function() {
   'use strict';
 
+  if (!document.getElementById('mobile-site-nav-css')) {
+    var mobileNavCss = document.createElement('link');
+    mobileNavCss.id = 'mobile-site-nav-css';
+    mobileNavCss.rel = 'stylesheet';
+    mobileNavCss.href = '/assets/css/mobile-site-nav.css?v=20260715-1';
+    document.head.appendChild(mobileNavCss);
+  }
+
   document.addEventListener('DOMContentLoaded', function() {
     var path = window.location.pathname;
     var lang = 'en';
