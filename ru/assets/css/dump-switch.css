@@ -1,0 +1,123 @@
+.game-switch .game-link {
+  display:inline-flex !important;
+  align-items:center !important;
+  min-height:42px !important;
+  padding:7px 13px !important;
+  border:2px solid #555864 !important;
+  background:rgba(5,8,16,.82) !important;
+  box-shadow:none !important;
+  font-size:14px !important;
+  opacity:.52 !important;
+  filter:saturate(.55) !important;
+}
+.game-switch .game-link:hover {
+  opacity:.86 !important;
+  filter:saturate(.9) !important;
+}
+.game-switch .game-link.deltarune {
+  color:#fff !important;
+  border-color:#656975 !important;
+  background:rgba(12,14,22,.84) !important;
+}
+.game-switch .game-link.undertale {
+  color:#ff5b6d !important;
+  border-color:#65404a !important;
+  background:rgba(24,7,13,.76) !important;
+}
+.game-switch .game-link.combined {
+  gap:7px !important;
+  color:#fff !important;
+  border-color:transparent !important;
+  border-image:linear-gradient(90deg,#58dbe7,#ff626a) 1 !important;
+  background:linear-gradient(90deg,rgba(20,85,91,.3),rgba(82,18,23,.32)) !important;
+}
+.game-switch .game-link.combined::before {
+  content:"" !important;
+  width:14px !important;
+  height:13px !important;
+  flex:0 0 auto !important;
+  background:linear-gradient(90deg,#58dbe7 0 50%,#ff626a 50% 100%) !important;
+  -webkit-mask:url('../../save-editor/game-sprites/spr_heart_0.png') center/contain no-repeat !important;
+  mask:url('../../save-editor/game-sprites/spr_heart_0.png') center/contain no-repeat !important;
+}
+.game-switch .game-link.voices {
+  color:#ff9ac7 !important;
+  border-color:#70475f !important;
+  background:rgba(37,10,27,.76) !important;
+}
+.game-switch .game-link.current {
+  opacity:1 !important;
+  filter:none !important;
+}
+.game-switch .game-link.deltarune.current {
+  color:#fff !important;
+  border-color:#fff !important;
+  background:#17171d !important;
+  box-shadow:0 0 16px rgba(255,255,255,.42) !important;
+}
+.game-switch .game-link.undertale.current {
+  color:#ff5b6d !important;
+  border-color:#ff5b6d !important;
+  background:#260812 !important;
+  box-shadow:0 0 17px rgba(255,66,91,.4) !important;
+}
+.game-switch .game-link.combined.current {
+  color:#fff !important;
+  background:linear-gradient(90deg,rgba(20,85,91,.5),rgba(82,18,23,.52)) !important;
+  box-shadow:-4px 0 12px rgba(88,219,231,.25),4px 0 12px rgba(255,98,106,.27) !important;
+}
+.game-switch .game-link.voices.current {
+  color:#ff9ac7 !important;
+  border-color:#ff9ac7 !important;
+  background:#31102a !important;
+  box-shadow:0 0 17px rgba(255,154,199,.42) !important;
+}
+
+@media (max-width:720px) {
+  .site-nav > ul:first-child,
+  .site-nav > div > ul:first-child {
+    display:grid !important;
+    grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+    grid-template-rows:repeat(2,24px) !important;
+    align-items:stretch !important;
+    justify-items:stretch !important;
+    justify-content:normal !important;
+    align-content:center !important;
+    gap:0 !important;
+    width:100% !important;
+    max-width:none !important;
+    height:48px !important;
+    min-height:48px !important;
+    margin:0 auto !important;
+    padding:0 !important;
+    overflow:visible !important;
+  }
+  .site-nav > ul:first-child:has(> li:nth-child(4):last-child),
+  .site-nav > div > ul:first-child:has(> li:nth-child(4):last-child) {
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  }
+  .site-nav > ul:first-child > li,
+  .site-nav > div > ul:first-child > li {
+    display:flex !important;
+    align-items:stretch !important;
+    justify-content:stretch !important;
+    min-width:0 !important;
+    margin:0 !important;
+    padding:0 !important;
+  }
+  .site-nav > ul:first-child > li > a,
+  .site-nav > div > ul:first-child > li > a {
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    width:100% !important;
+    min-width:0 !important;
+    height:24px !important;
+    margin:0 !important;
+    padding:1px 2px !important;
+    font-size:clamp(8px,2.45vw,10px) !important;
+    line-height:1.05 !important;
+    text-align:center !important;
+    white-space:nowrap !important;
+  }
+}

@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8">
-<link rel="icon" type="image/png" href="/assets/images/favicon.png">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
 <link rel="apple-touch-icon" href="/assets/images/apple-touch-icon.png">
 <meta property="og:locale" content="ru_RU">
 <link rel="alternate" hreflang="ru" href="https://darkgodteam.github.io/ru/interviews/chapter2/">
@@ -12,14 +12,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Interview - Toby Fox</title>
   <style>
-    @font-face { font-family: '8bitOperatorPlus-Bold'; src: url('../../assets/fonts/8bitOperatorPlus-Bold.ttf') format('truetype'); }
+    @font-face { font-family: '8bitOperatorPlus-Bold'; src: url('../../assets/fonts/8bitOperatorPlus-Bold.ttf') format('truetype'); font-display: block; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #000; min-height: 100vh; }
     .site-nav { width: 100%; height: 48px; background: #342DB5; position: relative; }
-    .nav-inner { position: relative; width: 100%; height: 48px; max-width: 672px; margin: 0 auto; padding: 0 140px 0 8px; display: flex; align-items: center; }
-    .nav-menu { display: flex; align-items: center; justify-content: space-between; width: 100%; height: 48px; list-style: none; font-family: '8bitOperatorPlus-Bold', monospace; text-transform: uppercase; }
+    .nav-inner { position: relative; width: 100%; height: 48px; margin: 0; padding: 0; display: block; }
+    .nav-menu { display: flex; align-items: center; justify-content: center; gap: 16px; width: 100%; max-width: 672px; margin: 0 auto; height: 48px; list-style: none; font-family: '8bitOperatorPlus-Bold', monospace; text-transform: uppercase; }
     .nav-menu a { color: #fff; text-decoration: none; font-size: 18px; text-shadow: 2px 2px 0 #000; padding: 0 8px; display: block; line-height: 48px; }
     .nav-menu a:hover { opacity: 0.8; }
+    @media (min-width:721px) and (max-width:767px){ .nav-menu{ gap:16px; } .nav-menu a{ font-size:14px; } }
     #regions { position: absolute; top: 12px; right: 12px; display: flex; gap: 8px; list-style: none; }
     #regions li { display: block; }
     #regions img { display: block !important; width: 36px !important; height: 24px !important; object-fit: cover !important; }
@@ -33,6 +34,10 @@
     iframe { width: 100%; height: calc(100vh - 48px); border: none; display: block; }
     @media (max-width: 640px) { .nav-menu a { font-size: 12px; padding: 0 4px; } .nav-inner { padding-right: 110px; } }
   </style>
+<script>(function(d){var de=d.documentElement;de.classList.add('pt-anim');function h(){de.classList.add('pt-loaded');}if(d.readyState==='complete')setTimeout(h,1000);else addEventListener('load',function(){setTimeout(h,1000);});setTimeout(h,6000);})(document);</script>
+<style id="pt-style">html.pt-anim::before{content:"";position:fixed;inset:0;z-index:2147483600;background:#0c0a14;opacity:1;transition:opacity .45s ease;}html.pt-anim.pt-loaded::before{opacity:0;pointer-events:none;}#pt-gif{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483601;width:135px;height:135px;object-fit:contain;image-rendering:pixelated;pointer-events:none;opacity:1;transition:opacity .45s ease;}html.pt-anim.pt-loaded #pt-gif{opacity:0;}html.pt-anim.pt-gone::before,html.pt-anim.pt-gone #pt-gif{display:none;}@media (prefers-reduced-motion:reduce){html.pt-anim::before,#pt-gif{transition:opacity .12s linear;}}</style>
+<script src="../../assets/js/page-loader-gifs.js" defer></script>
+<script src="../../assets/js/page-transition.js" defer></script>
 </head>
 <body>
 <nav class="site-nav">
@@ -41,8 +46,8 @@
       <li><a href="../../index.html">ГЛАВНАЯ</a></li>
       <li><a href="https://tobyfox.bandcamp.com/" target="_blank">САУНДТРЕК</a></li>
       <li><a href="https://www.fangamer.com/collections/deltarune" target="_blank">МЕРЧ</a></li>
-      <li><a href="../../save-editor/index.html" aria-label="Редактор сохранений" title="Редактор сохранений">СОХРАНЕНИЯ</a></li>
-      <li><a href="../../team/index.html">КОМАНДА</a></li>
+
+
     </ul>
     <ul id="regions">
       <li><a href="/eng/interviews/chapter2/index.html"><img alt="US" src="../../assets/images/flag-us.png"></a></li>
