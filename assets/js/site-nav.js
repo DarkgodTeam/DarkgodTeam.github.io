@@ -70,13 +70,13 @@
     var prefix = depthPrefix();
     var site = siteRoot();
     var page = pageSuffix();
-    var home = prefix + "index.html";
+    var home = prefix;
     var flags = prefix + "assets/images";
 
     function langUrl(code) {
       var b = (site || "") + "/" + code + page;
       if (b.slice(-1) !== "/") b += "/";
-      return b + "index.html";
+      return b;
     }
 
     return (
