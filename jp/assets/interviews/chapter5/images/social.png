@@ -1,0 +1,119 @@
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#000000">
+
+<title>404 - Toby Fox</title>
+
+<!-- Begin Bridgetown SEO tag v6.0.0 -->
+<meta property="og:title" content="404" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="The music and works of Toby Fox." />
+<meta property="og:description" content="The music and works of Toby Fox." />
+<link rel="canonical" href="https://toby.fangamer.com/404" />
+<meta property="og:url" content="https://toby.fangamer.com/404" />
+<meta property="og:site_name" content="Toby Fox" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-08-06T01:06:30+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="404" />
+<meta name="twitter:site" content="@tobyfox" />
+<!-- End Bridgetown SEO tag -->
+
+
+<meta name="description" content="The music and works of Toby Fox." />
+
+<link rel="stylesheet" href="/_bridgetown/static/index.VF3ITDXF.css" />
+<script src="/_bridgetown/static/index.XGWK7ZUE.js" defer></script>
+
+
+  </head>
+  <body class="blank  no-js">
+    <main>
+      <div id="center">
+  <div id="dog_sleep" class="dog">
+    <img class="dog1" src="/assets/images/dog-sleep.png" alt="Sleeping dog" />
+    <img class="dog2" src="/assets/images/dog-sleep.gif" alt="Sleeping dog" />
+  </div>
+  <div id="dog_maraca" class="dog hidden">
+    <img class="dog1" src="/assets/images/dog-sleep.png" alt="Maraca dog" />
+    <img class="dog2" src="/assets/images/dog-sleep.gif" alt="Maraca dog" />
+  </div>
+</div>
+
+<style>
+  .dog {
+    min-width: 320px;
+    max-width: 100%;
+    min-height: 320px;
+    max-height: 100%;
+    position: relative;
+    color: black;
+    cursor: pointer;
+  }
+  .dog img {
+    position: absolute;
+    height: 100%;
+    width: 100%;
+    object-fit: contain;
+    image-rendering: pixelated;
+  }
+  .dog2 {
+    opacity: 0;
+  }
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.1/jquery.slim.min.js" integrity="sha512-yBpuflZmP5lwMzZ03hiCLzA94N0K2vgBtJgqQ2E1meJzmIBfjbb7k4Y23k2i2c/rIeSUGc7jojyIY5waK3ZxCQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js" integrity="sha512-6+YN/9o9BWrk6wSfGxQGpt3EUK6XeHi6yeHV+TYD2GR0Sj/cggRpXr1BrAQf0as6XslxomMUxXp2vIl+fv0QRA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<script type="application/javascript">
+  var maraca = false;
+
+  var results = new Howl({
+    src: ['/assets/audio/results.ogg', '/assets/audio/results.mp3'],
+    volume: 0.5,
+    loop: true
+  });
+
+  var baci = new Howl({
+    src: ['/assets/audio/baci_perugina2.ogg', '/assets/audio/baci_perugina2.mp3'],
+    volume: 0.5,
+    loop: true
+  });
+
+  $(function() {
+    var r = Math.random();
+    if (Math.random() >= 0.95) {
+      $('#dog_sleep').addClass('hidden');
+      $('#dog_maraca').removeClass('hidden');
+      maraca = true;
+    }
+  });
+
+  $(document).on('click', '.dog:not(.playing)', function() {
+    if (maraca) {
+      baci.play();
+    } else {
+      results.play();
+    }
+    $('.dog').addClass('playing');
+    $('.dog1').css('opacity', 0);
+    $('.dog2').css('opacity', 1);
+  });
+
+  $(document).on('click', '.dog.playing', function() {
+    if (maraca) {
+      baci.pause();
+    } else {
+      results.pause();
+    }
+    $('.dog').removeClass('playing');
+    $('.dog1').css('opacity', 1);
+    $('.dog2').css('opacity', 0);
+  });
+</script>
+
+    </main>
+  </body>
+</html>

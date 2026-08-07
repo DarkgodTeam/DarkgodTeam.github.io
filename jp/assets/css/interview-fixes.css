@@ -1,0 +1,249 @@
+/* Interview page fixes - shared across eng/jp/ru */
+
+/* ===== Fonts (local files, not from toby.fangamer.com) ===== */
+@font-face {
+  font-display: swap;
+  font-family: "8bitOperatorPlus-Bold";
+  font-style: normal;
+  font-weight: 400;
+  src: url("/assets/fonts/8bitOperatorPlus-Bold.woff") format("woff");
+}
+@font-face {
+  font-display: swap;
+  font-family: "8bitOperatorPlus-Regular";
+  font-style: normal;
+  font-weight: 400;
+  src: url("/assets/fonts/8bitOperatorPlus-Regular.woff") format("woff");
+}
+@font-face {
+  font-display: swap;
+  font-family: JF-Dot-Shinonome-14-Regular;
+  font-style: normal;
+  font-weight: 400;
+  src: url("/assets/fonts/JF-Dot-Shinonome-14-Regular.woff") format("woff");
+}
+
+.font-8bit-bold {
+  font-family: "8bitOperatorPlus-Bold", monospace !important;
+}
+.font-8bit-regular {
+  font-family: "8bitOperatorPlus-Regular", monospace !important;
+}
+.font-8bit-regular strong,
+.font-8bit-bold strong,
+strong {
+  font-family: "8bitOperatorPlus-Bold", monospace !important;
+  font-weight: 400;
+}
+.font-8bit-japanese {
+  font-family: JF-Dot-Shinonome-14-Regular, monospace !important;
+}
+
+/* ===== No page jump when Fancybox opens ===== */
+html {
+  overflow-y: scroll; /* scrollbar always present */
+  scrollbar-gutter: stable;
+}
+
+/* ===== Notes relative to piano dog ===== */
+.audio-player__dog {
+  position: relative !important;
+  display: inline-block;
+  overflow: visible !important;
+}
+.audio-player__dog .animate-note,
+.audio-player__dog img.absolute {
+  position: absolute !important;
+  pointer-events: none;
+  z-index: 30;
+}
+
+/* ===== Content width ===== */
+main > div.container,
+main .max-w-prose,
+main .container {
+  max-width: 65ch !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  padding-left: 1rem !important;
+  padding-right: 1rem !important;
+}
+
+main img,
+main video {
+  max-width: 100% !important;
+  height: auto !important;
+}
+
+main figure {
+  margin-top: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+main h2 {
+  margin-top: 4rem;
+  margin-bottom: 1.5rem;
+}
+main .flex.flex-col.gap-y-6 > * + * {
+  margin-top: 1.5rem;
+}
+
+/* Fancybox close button dark background */
+.fancybox__content > .f-button.is-close-btn,
+.f-button.is-close-btn {
+  background: rgba(0, 0, 0, 0.6) !important;
+  border-radius: 4px;
+}
+.is-compact .fancybox__content > .f-button.is-close-btn {
+  background: rgba(0, 0, 0, 0.6) !important;
+  border-radius: 50%;
+}
+
+
+/* ===== Fan-site nav — same as homepage ===== */
+/* Color from site CSS: --color-nav-blue / .bg-nav-blue */
+.bg-nav-blue,
+nav.site-nav.bg-nav-blue,
+nav.site-nav {
+  background-color: #342db5 !important;
+  background-color: var(--color-nav-blue, #342db5) !important;
+}
+
+nav.site-nav {
+  position: relative;
+  z-index: 40;
+  width: 100%;
+}
+
+nav.site-nav > div.relative {
+  position: relative;
+  width: 100%;
+}
+
+/* Homepage: font on nav links */
+.site-nav a,
+.site-nav .font-8bit a,
+.site-nav > div > ul:first-child {
+  font-family: "8bitOperatorPlus-Bold", monospace !important;
+}
+
+nav.site-nav > div > ul:first-of-type {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 42rem;
+  margin-left: auto;
+  margin-right: auto;
+  gap: 0.75rem;
+  height: 3rem;
+  padding-left: 0.5rem;
+  padding-right: 6rem;
+  list-style: none;
+  margin-top: 0;
+  margin-bottom: 0;
+  text-transform: uppercase;
+}
+
+@media (min-width: 768px) {
+  nav.site-nav > div > ul:first-of-type {
+    gap: 1.5rem; /* md:gap-6 */
+    padding-right: 0;
+  }
+}
+
+nav.site-nav > div > ul:first-of-type li {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+nav.site-nav > div > ul:first-of-type a {
+  color: #fff !important;
+  text-decoration: none !important;
+  display: inline-block;
+  text-align: center;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 1);
+  transition: opacity 150ms;
+  font-size: 0.75rem; /* text-xs */
+}
+
+@media (min-width: 640px) {
+  nav.site-nav > div > ul:first-of-type a {
+    font-size: 0.875rem; /* sm:text-sm */
+  }
+}
+
+@media (min-width: 768px) {
+  nav.site-nav > div > ul:first-of-type a {
+    font-size: 1.125rem; /* md:text-lg */
+  }
+}
+
+nav.site-nav > div > ul:first-of-type a:hover {
+  opacity: 0.8;
+  transition-duration: 0ms;
+}
+
+/* Homepage #regions — exact values from index.html inline style */
+#regions {
+  position: absolute !important;
+  top: 12px !important;
+  right: 12px !important;
+  z-index: 1000 !important;
+  display: flex !important;
+  gap: 8px !important;
+  list-style: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  max-width: none !important;
+  height: auto !important;
+  transform: none !important;
+}
+
+#regions li {
+  list-style: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+#regions a {
+  display: inline-block;
+  transition: opacity 150ms;
+  text-decoration: none;
+}
+
+#regions a:hover {
+  opacity: 0.8;
+  transition-duration: 0ms;
+}
+
+#regions img {
+  display: block !important;
+  width: 36px !important;
+  height: 24px !important;
+  object-fit: cover !important;
+}
+
+@media (max-width: 720px) {
+  #regions img {
+    width: 14px !important;
+    height: 10px !important;
+  }
+  #regions {
+    top: 17px !important;
+    right: 4px !important;
+    gap: 2px !important;
+  }
+  .site-nav ul:first-child {
+    justify-content: flex-start !important;
+    gap: 0px !important;
+    padding-left: 2px !important;
+    padding-right: 48px !important;
+  }
+  .site-nav ul:first-child a {
+    padding: 0 3px !important;
+    font-size: 8px !important;
+  }
+}
