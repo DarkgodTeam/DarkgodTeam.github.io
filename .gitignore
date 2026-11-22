@@ -1,8 +1,4 @@
 tools/
-dr_tools/
-dr_export/
-перевод глав для редактора/
-сайт save editor knight/
 
 .*
 !.gitignore
@@ -21,3 +17,4 @@ desktop.ini
 .vscode/
 
 *.psd
+*.py
