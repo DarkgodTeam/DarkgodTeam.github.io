@@ -1,0 +1,14 @@
+/* отступ перед заголовками разделов */
+.newsletter .section-header {
+  margin-top: 80px !important;
+}
+
+/* подчёркивание ссылок в тексте */
+.newsletter .blurb a:not(.link-button) {
+  text-decoration: underline !important;
+}
+
+/* верхнее меню */
+.site-nav li {
+  margin-top: 0 !important;
+}
